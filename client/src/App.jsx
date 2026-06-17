@@ -53,12 +53,36 @@ const markdownComponents = {
   },
 };
 
+function CollapseIcon({ direction }) {
+  const isLeft = direction === "left";
+  return (
+    <svg
+      className="h-4 w-4 shrink-0 text-slate-500"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {isLeft ? (
+        <path d="M15 18l-6-6 6-6" />
+      ) : (
+        <path d="M9 18l6-6-6-6" />
+      )}
+    </svg>
+  );
+}
+
 export default function App() {
   const [files, setFiles] = useState([]);
   const [selectedPath, setSelectedPath] = useState(null);
   const [draft, setDraft] = useState("");
   const [loadError, setLoadError] = useState(null);
   const [saveState, setSaveState] = useState(null);
+  const [editorCollapsed, setEditorCollapsed] = useState(false);
+  const [previewCollapsed, setPreviewCollapsed] = useState(false);
 
   const refreshList = useCallback(() => {
     fetch(`${apiBase}/mds`)
@@ -141,7 +165,7 @@ export default function App() {
           </p>
         )}
 
-        <div className="grid min-h-[calc(100vh-6rem)] grid-cols-1 gap-4 lg:grid-cols-[minmax(12rem,13rem)_1fr_1fr]">
+        <div className="grid min-h-[calc(100vh-6rem)] grid-cols-1 gap-4 lg:grid-cols-[minmax(12rem,13rem)_minmax(0,1fr)]">
           <aside className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <h2 className="mb-2 text-base font-semibold text-slate-800">Files</h2>
             <ul className="max-h-[70vh] list-none space-y-1 overflow-auto p-0">
@@ -172,59 +196,134 @@ export default function App() {
             )}
           </aside>
 
-          <section className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            <div className="mb-2 flex flex-wrap items-center gap-2 gap-y-2">
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-500">
-                {selectedPath ? selectedPath : "Select a file"}
-              </span>
-              <button
-                type="button"
-                className="rounded-lg border border-sky-600 bg-sky-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!selectedPath}
-                onClick={save}
-              >
-                Save
-              </button>
-              {saveState === "saving" && (
-                <span className="text-sm text-slate-500">Saving…</span>
-              )}
-              {saveState === "saved" && (
-                <span className="text-sm font-medium text-emerald-700">Saved</span>
-              )}
-              {saveState &&
-                saveState !== "saving" &&
-                saveState !== "saved" && (
-                  <span className="text-sm text-red-700">{saveState}</span>
-                )}
-            </div>
-            <textarea
-              className="min-h-[18rem] w-full flex-1 resize-y rounded-lg border border-slate-300 bg-white p-3 font-mono text-sm leading-relaxed text-slate-900 shadow-inner outline-none ring-sky-500/30 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={
-                selectedPath ? "Edit markdown…" : "Pick a file from the list"
+          <div className="flex h-full min-h-0 min-w-0 w-full flex-col gap-4 lg:flex-row lg:gap-4">
+            <section
+              className={
+                editorCollapsed
+                  ? "flex h-11 shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm lg:h-auto lg:min-h-0 lg:w-12 lg:min-w-12 lg:max-w-12 lg:flex-shrink-0"
+                  : "flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 lg:basis-0"
               }
-              spellCheck={false}
-              disabled={!selectedPath}
-            />
-          </section>
-
-          <section className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
-              {selectedPath ? (
-                <div className="prose prose-slate max-w-none min-w-0 prose-headings:scroll-mt-4 prose-pre:bg-slate-900 prose-pre:text-slate-100">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents}
-                  >
-                    {draft}
-                  </ReactMarkdown>
-                </div>
+            >
+              {editorCollapsed ? (
+                <button
+                  type="button"
+                  className="flex h-full w-full flex-row items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200/80 lg:flex-col lg:py-3"
+                  onClick={() => setEditorCollapsed(false)}
+                  title="Expand editor"
+                >
+                  <CollapseIcon direction="right" />
+                  <span className="max-w-[8rem] truncate sm:max-w-none lg:max-w-none lg:[writing-mode:vertical-rl] lg:rotate-180">
+                    Editor
+                  </span>
+                </button>
               ) : (
-                <p className="text-sm text-slate-500">Select a file to preview.</p>
+                <>
+                  <div className="mb-2 flex flex-wrap items-center gap-2 gap-y-2">
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-500">
+                      {selectedPath ? selectedPath : "Select a file"}
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+                      onClick={() => setEditorCollapsed(true)}
+                      title="Collapse editor"
+                    >
+                      <CollapseIcon direction="left" />
+                      <span className="hidden sm:inline">Collapse</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-sky-600 bg-sky-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!selectedPath}
+                      onClick={save}
+                    >
+                      Save
+                    </button>
+                    {saveState === "saving" && (
+                      <span className="text-sm text-slate-500">Saving…</span>
+                    )}
+                    {saveState === "saved" && (
+                      <span className="text-sm font-medium text-emerald-700">
+                        Saved
+                      </span>
+                    )}
+                    {saveState &&
+                      saveState !== "saving" &&
+                      saveState !== "saved" && (
+                        <span className="text-sm text-red-700">{saveState}</span>
+                      )}
+                  </div>
+                  <textarea
+                    className="min-h-[18rem] w-full flex-1 resize-y rounded-lg border border-slate-300 bg-white p-3 font-mono text-sm leading-relaxed text-slate-900 shadow-inner outline-none ring-sky-500/30 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder={
+                      selectedPath
+                        ? "Edit markdown…"
+                        : "Pick a file from the list"
+                    }
+                    spellCheck={false}
+                    disabled={!selectedPath}
+                  />
+                </>
               )}
-            </div>
-          </section>
+            </section>
+
+            <section
+              className={
+                previewCollapsed
+                  ? "flex h-11 shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm lg:h-auto lg:min-h-0 lg:w-12 lg:min-w-12 lg:max-w-12 lg:flex-shrink-0"
+                  : "flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 lg:basis-0"
+              }
+            >
+              {previewCollapsed ? (
+                <button
+                  type="button"
+                  className="flex h-full w-full flex-row items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200/80 lg:flex-col lg:py-3"
+                  onClick={() => setPreviewCollapsed(false)}
+                  title="Expand preview"
+                >
+                  <CollapseIcon direction="left" />
+                  <span className="max-w-[8rem] truncate sm:max-w-none lg:max-w-none lg:[writing-mode:vertical-rl] lg:rotate-180">
+                    Preview
+                  </span>
+                </button>
+              ) : (
+                <>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-base font-semibold text-slate-800">
+                      Preview
+                    </h2>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+                      onClick={() => setPreviewCollapsed(true)}
+                      title="Collapse preview"
+                    >
+                      <span className="hidden sm:inline">Collapse</span>
+                      <CollapseIcon direction="right" />
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    {selectedPath ? (
+                      <div className="prose prose-slate max-w-none min-w-0 prose-headings:scroll-mt-4 prose-pre:bg-slate-900 prose-pre:text-slate-100">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={markdownComponents}
+                        >
+                          {draft}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500">
+                        Select a file to preview.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
         </div>
       </div>
     </main>

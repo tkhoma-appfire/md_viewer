@@ -2,7 +2,7 @@
 
 With 15+ years of experience, you already have the technical depth. What "lead mindset" usually means at this stage is shifting from **personal output** to **organizational leverage**: choosing problems, influencing without authority, mentoring, and aligning technical decisions with business outcomes.
 
-Below is a practical Udemy path, grouped by the kind of lead role you want. Wait for a sale — most of these are often 70–90% off.
+Below is a practical Udemy path, grouped by the kind of lead role you want.
 
 ---
 
