@@ -1,7 +1,57 @@
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const apiBase = "/md_viewer/api";
+
+/** Cursor/VS Code–style table chrome (GFM tables need `remark-gfm`). */
+const markdownComponents = {
+  table({ children, ...props }) {
+    return (
+      <div className="not-prose my-4 w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table
+          className="m-0 w-max min-w-full border-collapse border-0 text-left text-sm leading-snug text-slate-800"
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
+    );
+  },
+  thead({ children, ...props }) {
+    return <thead {...props}>{children}</thead>;
+  },
+  tbody({ children, ...props }) {
+    return <tbody {...props}>{children}</tbody>;
+  },
+  tr({ children, ...props }) {
+    return (
+      <tr className="even:bg-slate-50/90" {...props}>
+        {children}
+      </tr>
+    );
+  },
+  th({ children, ...props }) {
+    return (
+      <th
+        className="border border-slate-200 bg-slate-100 px-3 py-2 align-top font-semibold text-slate-900"
+        {...props}
+      >
+        {children}
+      </th>
+    );
+  },
+  td({ children, ...props }) {
+    return (
+      <td
+        className="border border-slate-200 px-3 py-2 align-top text-slate-700"
+        {...props}
+      >
+        {children}
+      </td>
+    );
+  },
+};
 
 export default function App() {
   const [files, setFiles] = useState([]);
@@ -71,7 +121,7 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 pb-8 pt-4 text-slate-900 antialiased sm:px-6">
-      <div className="mx-auto max-w-[120rem]">
+      <div className="mx-auto w-full max-w-[140rem]">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold tracking-tight text-slate-800">
             MD Viewer
@@ -91,20 +141,9 @@ export default function App() {
           </p>
         )}
 
-        <div className="grid min-h-[calc(100vh-6rem)] grid-cols-1 gap-4 lg:grid-cols-[minmax(12rem,18rem)_1fr_1fr]">
+        <div className="grid min-h-[calc(100vh-6rem)] grid-cols-1 gap-4 lg:grid-cols-[minmax(12rem,13rem)_1fr_1fr]">
           <aside className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <h2 className="mb-2 text-base font-semibold text-slate-800">Files</h2>
-            <p className="mb-3 text-xs leading-relaxed text-slate-500">
-              From host{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-slate-700">
-                ./mds
-              </code>{" "}
-              (mounted at{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-slate-700">
-                /data/mds
-              </code>{" "}
-              in the server).
-            </p>
             <ul className="max-h-[70vh] list-none space-y-1 overflow-auto p-0">
               {files.map((f) => (
                 <li key={f.path}>
@@ -133,7 +172,7 @@ export default function App() {
             )}
           </aside>
 
-          <section className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+          <section className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="mb-2 flex flex-wrap items-center gap-2 gap-y-2">
               <span className="min-w-0 flex-1 truncate text-sm text-slate-500">
                 {selectedPath ? selectedPath : "Select a file"}
@@ -170,12 +209,16 @@ export default function App() {
             />
           </section>
 
-          <section className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            <h2 className="mb-2 text-base font-semibold text-slate-800">Preview</h2>
+          <section className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
               {selectedPath ? (
-                <div className="prose prose-slate max-w-none prose-headings:scroll-mt-4 prose-pre:bg-slate-900 prose-pre:text-slate-100">
-                  <ReactMarkdown>{draft}</ReactMarkdown>
+                <div className="prose prose-slate max-w-none min-w-0 prose-headings:scroll-mt-4 prose-pre:bg-slate-900 prose-pre:text-slate-100">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {draft}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <p className="text-sm text-slate-500">Select a file to preview.</p>
