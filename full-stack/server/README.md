@@ -1,0 +1,82 @@
+# MD Viewer API (full-stack server)
+
+Express API for the full-stack MD viewer. Serves markdown files from a local `mds/` directory for the Android client (and other HTTP clients).
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+ (ES modules)
+
+## Setup
+
+```bash
+npm install
+```
+
+## Run
+
+```bash
+npm start
+```
+
+Default URL: **http://localhost:3000**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | HTTP port |
+| `MDS_DIR` | `./mds` (next to `src/`) | Directory containing `.md` files |
+
+Example with a custom port and markdown folder:
+
+```bash
+PORT=3100 MDS_DIR=/path/to/notes npm start
+```
+
+The server binds to `0.0.0.0`, so it is reachable from other devices on your network (and from the Android emulator via `10.0.2.2` when the host port is forwarded).
+
+## Markdown files (`mds/`)
+
+Put `.md` files in **`mds/`** at the project root of this server (`full-stack/server/mds/`). Subfolders are scanned recursively.
+
+This folder is gitignored; files stay on your machine and are not committed.
+
+## API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Hello World |
+| `GET` | `/api/health` | Service status and resolved `mdsDir` |
+| `GET` | `/api/mds/` | List all `.md` files (relative paths) |
+| `GET` | `/api/mds/file?path=…` | Read one file’s content |
+
+### List files
+
+```bash
+curl http://localhost:3000/api/mds/
+```
+
+Response:
+
+```json
+{
+  "files": [
+    { "path": "notes/example.md" }
+  ]
+}
+```
+
+### Read a file
+
+```bash
+curl "http://localhost:3000/api/mds/file?path=notes/example.md"
+```
+
+Response:
+
+```json
+{
+  "path": "notes/example.md",
+  "content": "# Title\n\n..."
+}
+```
+
+Errors: `400` for invalid path, `404` if the file does not exist.
