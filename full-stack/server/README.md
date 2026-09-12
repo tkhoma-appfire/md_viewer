@@ -80,3 +80,40 @@ Response:
 ```
 
 Errors: `400` for invalid path, `404` if the file does not exist.
+
+## Docker
+
+```bash
+make build
+make run          # host network (recommended for phone access on Linux)
+make run-port     # port mapping -p 3000:3000
+make run-native   # without Docker
+```
+
+## Access from a phone
+
+The server must be reachable on your LAN.
+
+1. Find your PC IP on Wi‑Fi (example: `192.168.0.112`):
+   ```bash
+   ip -4 addr show wlp0s20f3 | grep inet
+   ```
+2. Start the server (`make run` or `npm start`).
+3. On the phone browser, open **`http://192.168.0.112:3000/api/health`** (include `http://`).
+
+   **If `curl` works but the browser says “unreachable”**, the browser is probably using **HTTPS**. The server speaks HTTP only. Typing `192.168.0.112:3000` without `http://` makes Chrome/Firefox try `https://…`, which fails.
+
+   - Use the full URL: `http://192.168.0.112:3000/api/health`
+   - Chrome: Settings → Privacy → turn off **Always use secure connections**
+   - Firefox: disable **HTTPS-Only Mode** for this test
+4. Phone and PC must be on the **same Wi‑Fi** (not mobile data, not guest Wi‑Fi with client isolation).
+5. If the browser test fails, open port 3000 in the firewall:
+   ```bash
+   sudo ufw allow 3000/tcp
+   ```
+6. If Docker is used and the phone still cannot connect, prefer `make run` (host network) over `make run-port`.
+
+Set the same URL in the Android app (`SERVER_BASE_URL` in `app/build.gradle.kts`) and reinstall:
+```bash
+cd ../android && make install
+```

@@ -1,6 +1,6 @@
 # MD Viewer (Android)
 
-Kotlin + Jetpack Compose app for the full-stack MD viewer. Currently shows a Hello World screen; it will connect to the API in `../server/`.
+Kotlin + Jetpack Compose app for the full-stack MD viewer. On launch it loads the markdown file list from the API in `../server/`.
 
 ## Prerequisites
 
@@ -30,13 +30,14 @@ From this directory (`full-stack/android/`):
 |---------|-------------|
 | `make build` | Build debug APK (`app/build/outputs/apk/debug/app-debug.apk`) |
 | `make install` | Build and install on a connected device/emulator |
+| `make run` | `reverse` + `install` + launch the app |
 | `make help` | List targets |
 
 Examples:
 
 ```bash
 make build
-make install
+make run
 ```
 
 Override SDK location if needed:
@@ -74,4 +75,40 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Backend API
 
-The server lives in `../server/`. On the **Android emulator**, use `http://10.0.2.2:3000` to reach a server running on your host at port 3000. On a **physical device**, use your computer’s LAN IP instead of `localhost`.
+Start the server first (from `../server/`):
+
+```bash
+make run
+# or: npm start
+```
+
+The app calls `GET /api/mds/` on startup and shows the returned file paths in a list.
+
+The server URL is a build-time setting. The default is `http://192.168.0.112:3000/`
+
+```bash
+make run
+```
+
+The forward is cleared when the device is unplugged or `adb` restarts; re-run `make reverse` to restore it.
+
+### Wi-Fi connection
+
+The phone must be on the **same Wi-Fi network** as the computer — mobile data and USB tethering will not work.
+
+Check what the phone is actually connected to:
+
+```bash
+adb shell ip -4 addr show        # look for a wlan0 address like 192.168.0.x
+adb shell ping -c 3 192.168.0.112
+```
+
+If `ping` fails or there is no `wlan0` address, the phone is not on your LAN. Either connect it to Wi-Fi or use the USB method above.
+
+### Troubleshooting
+
+| Symptom | Cause |
+|---------|-------|
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | An older build with a different signing key is installed. Run `adb uninstall com.mdviewer.app` first. |
+| App shows "Cannot reach server" | Wrong `SERVER_URL`, server not running, or phone not on the same network. |
+| Works in `curl` but not on phone | Phone is on mobile data, not Wi-Fi. Use `make run`. |

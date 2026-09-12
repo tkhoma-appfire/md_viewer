@@ -1,17 +1,20 @@
-.PHONY: build install help local.properties
+.PHONY: build install run help local.properties
 
 GRADLE := ./gradlew
 SDK_DIR ?= $(firstword $(wildcard $(HOME)/Android/Sdk) $(ANDROID_HOME) $(ANDROID_SDK_ROOT))
+
+# Server the app talks to. Default works with `make reverse` over USB.
+SERVER_URL ?= http://192.168.0.112:3000/
 
 .DEFAULT_GOAL := help
 
 ## Build debug APK
 build: local.properties
-	$(GRADLE) assembleDebug
+	$(GRADLE) assembleDebug -PserverUrl=$(SERVER_URL)
 
 ## Install debug APK on connected device or emulator
 install: local.properties
-	$(GRADLE) installDebug
+	$(GRADLE) installDebug -PserverUrl=$(SERVER_URL)
 
 local.properties:
 	@if [ -z "$(SDK_DIR)" ]; then \

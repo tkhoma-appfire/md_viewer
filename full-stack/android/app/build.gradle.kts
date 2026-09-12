@@ -4,6 +4,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Override at build time: ./gradlew installDebug -PserverUrl=http://192.168.0.112:3000/
+val serverUrl: String = (project.findProperty("serverUrl") as String?) ?: "http://localhost:3000/"
+
 android {
     namespace = "com.mdviewer.app"
     compileSdk = 35
@@ -14,6 +17,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "SERVER_BASE_URL", "\"$serverUrl\"")
     }
 
     buildTypes {
@@ -37,6 +41,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -47,5 +52,11 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

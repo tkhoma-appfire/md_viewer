@@ -1,4 +1,4 @@
-.PHONY: build run help
+.PHONY: build run run-port run-native help
 
 IMAGE := md-viewer-server
 PORT ?= 3000
@@ -9,9 +9,17 @@ PORT ?= 3000
 build:
 	docker build -t $(IMAGE) .
 
-## Run container (foreground); maps port and mounts ./mds
+## Run container with host network (recommended for phone access on Linux)
 run:
+	docker run --rm --network host -v $(CURDIR)/mds:/data/mds $(IMAGE)
+
+## Run container with port mapping
+run-port:
 	docker run --rm -p $(PORT):3000 -v $(CURDIR)/mds:/data/mds $(IMAGE)
+
+## Run without Docker
+run-native:
+	npm start
 
 ## Show available targets
 help:
