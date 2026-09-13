@@ -12,6 +12,17 @@ Express API for the full-stack MD viewer. Serves markdown files from a local `md
 npm install
 ```
 
+This project includes `.npmrc` pointing at the public npm registry (`https://registry.npmjs.org/`). That is required for Vercel and other CI hosts that cannot authenticate to a corporate Nexus mirror.
+
+If `npm install` fails on Vercel with `Unable to authenticate … Sonatype Nexus`, regenerate the lockfile from this directory (not from a machine that uses a private registry):
+
+```bash
+rm -rf node_modules package-lock.json
+npm install --registry=https://registry.npmjs.org/
+```
+
+Commit the updated `package-lock.json` (all `resolved` URLs should be `registry.npmjs.org`, not `nexus.…`).
+
 ## Run
 
 ```bash
