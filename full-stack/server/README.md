@@ -35,7 +35,7 @@ The server binds to `0.0.0.0`, so it is reachable from other devices on your net
 
 ## Markdown files (`mds/`)
 
-Put `.md` files in **`mds/`** at the project root of this server (`full-stack/server/mds/`). Subfolders are scanned recursively.
+Put `.md` files in **`mds/`** at the project root of this server (`full-stack/server/mds/`). Subfolders are scanned recursively. Symbolic links to `.md` files or directories are followed.
 
 This folder is gitignored; files stay on your machine and are not committed.
 
@@ -45,7 +45,7 @@ This folder is gitignored; files stay on your machine and are not committed.
 |--------|------|-------------|
 | `GET` | `/` | Hello World |
 | `GET` | `/api/health` | Service status and resolved `mdsDir` |
-| `GET` | `/api/mds/` | List all `.md` files (relative paths) |
+| `GET` | `/api/mds/` | List `.md` files with `path` and `title` (first line, `#` stripped) |
 | `GET` | `/api/mds/file?path=…` | Read one file’s content |
 
 ### List files
@@ -59,10 +59,12 @@ Response:
 ```json
 {
   "files": [
-    { "path": "notes/example.md" }
+    { "path": "notes/example.md", "title": "Example title" }
   ]
 }
 ```
+
+`title` is the first line of the file with `#` characters removed.
 
 ### Read a file
 

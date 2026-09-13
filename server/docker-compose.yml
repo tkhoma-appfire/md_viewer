@@ -1,7 +1,7 @@
 services:
   server:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
     container_name: md_viewer_server
     restart: unless-stopped

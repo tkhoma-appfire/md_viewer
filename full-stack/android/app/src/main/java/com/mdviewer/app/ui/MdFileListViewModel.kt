@@ -12,6 +12,9 @@ class MdFileListViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<MdFileListUiState>(MdFileListUiState.Loading)
     val uiState: StateFlow<MdFileListUiState> = _uiState.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     init {
         loadFiles()
     }
@@ -19,14 +22,34 @@ class MdFileListViewModel : ViewModel() {
     fun loadFiles() {
         viewModelScope.launch {
             _uiState.value = MdFileListUiState.Loading
-            try {
-                val response = ApiClient.mdsApi.listFiles()
-                _uiState.value = MdFileListUiState.Success(response.files)
-            } catch (e: Exception) {
+            fetchFiles(keepContentOnError = false)
+        }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            val keepContent = _uiState.value is MdFileListUiState.Success
+            if (keepContent) {
+                _isRefreshing.value = true
+            } else {
+                _uiState.value = MdFileListUiState.Loading
+            }
+            fetchFiles(keepContentOnError = keepContent)
+        }
+    }
+
+    private suspend fun fetchFiles(keepContentOnError: Boolean) {
+        try {
+            val response = ApiClient.mdsApi.listFiles()
+            _uiState.value = MdFileListUiState.Success(response.files)
+        } catch (e: Exception) {
+            if (!keepContentOnError) {
                 _uiState.value = MdFileListUiState.Error(
                     e.message ?: "Failed to load markdown files",
                 )
             }
+        } finally {
+            _isRefreshing.value = false
         }
     }
 }
