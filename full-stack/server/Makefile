@@ -12,7 +12,6 @@ build:
 ## Run container with host network (recommended for phone access on Linux)
 run:
 	docker run --rm --network host \
-	  -v $(CURDIR)/mds:/data/mds \
 	  -v $(CURDIR)/comments:/app/comments \
 	  -v $(CURDIR)/access:/app/access \
 	  -e COMMENTS_DIR=/app/comments \
@@ -22,7 +21,6 @@ run:
 ## Run container with port mapping
 run-port:
 	docker run --rm -p $(PORT):3000 \
-	  -v $(CURDIR)/mds:/data/mds \
 	  -v $(CURDIR)/comments:/app/comments \
 	  -v $(CURDIR)/access:/app/access \
 	  -e COMMENTS_DIR=/app/comments \

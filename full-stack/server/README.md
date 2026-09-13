@@ -34,21 +34,22 @@ Default URL: **http://localhost:3000**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | HTTP port |
-| `MDS_DIR` | `./mds` (next to `src/`) | Directory containing `.md` files |
+| `COMMENTS_DIR` | `./comments` | Comment JSON storage (gitignored) |
+| `ACCESS_DIR` | `./access` | Viewer access lists (gitignored) |
 
-Example with a custom port and markdown folder:
+Example with a custom port:
 
 ```bash
-PORT=3100 MDS_DIR=/path/to/notes npm start
+PORT=3100 npm start
 ```
 
 The server binds to `0.0.0.0`, so it is reachable from other devices on your network (and from the Android emulator via `10.0.2.2` when the host port is forwarded).
 
 ## Markdown files (`mds/`)
 
-Put `.md` files in **`mds/`** at the project root of this server (`full-stack/server/mds/`). Subfolders are scanned recursively. Symbolic links to `.md` files or directories are followed.
+Markdown files live in **`full-stack/server/mds/`** (committed with the repo). Subfolders are scanned recursively. Symbolic links to `.md` files or directories are followed. The server always reads from this path; it is not configurable.
 
-This folder is gitignored; files stay on your machine and are not committed.
+Comments and access lists stay under `comments/` and `access/` (gitignored).
 
 ## API
 
@@ -58,7 +59,6 @@ This folder is gitignored; files stay on your machine and are not committed.
 | `GET` | `/api/health` | Service status and resolved `mdsDir` |
 | `GET` | `/api/mds/` | List `.md` files with `path` and `title` (first line, `#` stripped) |
 | `GET` | `/api/mds/file?path=…` | Read one file’s content |
-| `POST` | `/api/mds/file` | Upload or replace a file (`{ path, content }`; requires `X-User-Email`) |
 | `GET` | `/api/mds/comments?path=…` | List comments for a file |
 | `POST` | `/api/mds/comments` | Add a comment (`{ path, line, text }`; author from `X-User-Email`) |
 | `DELETE` | `/api/mds/comments` | Remove own comment (`{ path, id }`; requires `X-User-Email`) |
@@ -106,32 +106,6 @@ Response:
 ```
 
 Errors: `400` for invalid path, `404` if the file does not exist.
-
-### Upload a file
-
-Creates a new `.md` file under `mds/` (creates subfolders as needed). Replaces an existing file if you have access to it.
-
-```bash
-curl -X POST http://localhost:3000/api/mds/file \
-  -H "Content-Type: application/json" \
-  -H "X-User-Email: you@example.com" \
-  -d '{
-    "path": "notes/example.md",
-    "content": "# Example title\n\nHello from upload."
-  }'
-```
-
-Response (`201` created, `200` updated):
-
-```json
-{
-  "path": "notes/example.md",
-  "title": "Example title",
-  "created": true
-}
-```
-
-Errors: `401` if `X-User-Email` is missing, `403` if the file exists and you are not allowed to view it, `400` if `path` or `content` is invalid.
 
 ### Restrict who can view a file
 

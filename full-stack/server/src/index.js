@@ -9,8 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
-const mdsDir =
-  process.env.MDS_DIR || path.join(__dirname, "..", "mds");
+const mdsDir = path.resolve(__dirname, "..", "mds");
 const commentsDir =
   process.env.COMMENTS_DIR || path.join(__dirname, "..", "comments");
 const accessDir =
