@@ -86,5 +86,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("com.mikepenz:multiplatform-markdown-renderer-android:0.35.0")
     implementation("com.mikepenz:multiplatform-markdown-renderer-m3-android:0.35.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("io.coil-kt:coil-gif:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

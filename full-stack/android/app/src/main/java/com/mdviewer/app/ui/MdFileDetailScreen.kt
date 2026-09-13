@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,42 +74,43 @@ fun MdFileDetailScreen(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val state = uiState) {
-                MdFileDetailUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+                    MdFileDetailUiState.Loading -> {
+                        LoadingGifBox(modifier = Modifier.fillMaxSize())
+                    }
 
-                is MdFileDetailUiState.Error -> {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                        )
-                        Button(onClick = viewModel::refresh) {
-                            Text("Retry")
+                    is MdFileDetailUiState.Error -> {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(
+                                text = state.message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                            )
+                            Button(onClick = viewModel::refresh) {
+                                Text("Retry")
+                            }
                         }
                     }
-                }
 
-                is MdFileDetailUiState.Success -> {
-                    val scrollState = rememberScrollState()
-                    val markdownState = rememberMarkdownState(state.content)
-                    Markdown(
-                        markdownState = markdownState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(scrollState)
-                            .padding(16.dp),
-                    )
+                    is MdFileDetailUiState.Success -> {
+                        val scrollState = rememberScrollState()
+                        val markdownState = rememberMarkdownState(state.content)
+                        Markdown(
+                            markdownState = markdownState,
+                            loading = { modifier -> LoadingGifBox(modifier = modifier) },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                                .padding(16.dp),
+                        )
+                    }
                 }
             }
         }
     }
-}
 }
