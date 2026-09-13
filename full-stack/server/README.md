@@ -58,6 +58,7 @@ This folder is gitignored; files stay on your machine and are not committed.
 | `GET` | `/api/health` | Service status and resolved `mdsDir` |
 | `GET` | `/api/mds/` | List `.md` files with `path` and `title` (first line, `#` stripped) |
 | `GET` | `/api/mds/file?path=…` | Read one file’s content |
+| `POST` | `/api/mds/file` | Upload or replace a file (`{ path, content }`; requires `X-User-Email`) |
 | `GET` | `/api/mds/comments?path=…` | List comments for a file |
 | `POST` | `/api/mds/comments` | Add a comment (`{ path, line, text }`; author from `X-User-Email`) |
 | `DELETE` | `/api/mds/comments` | Remove own comment (`{ path, id }`; requires `X-User-Email`) |
@@ -105,6 +106,32 @@ Response:
 ```
 
 Errors: `400` for invalid path, `404` if the file does not exist.
+
+### Upload a file
+
+Creates a new `.md` file under `mds/` (creates subfolders as needed). Replaces an existing file if you have access to it.
+
+```bash
+curl -X POST http://localhost:3000/api/mds/file \
+  -H "Content-Type: application/json" \
+  -H "X-User-Email: you@example.com" \
+  -d '{
+    "path": "notes/example.md",
+    "content": "# Example title\n\nHello from upload."
+  }'
+```
+
+Response (`201` created, `200` updated):
+
+```json
+{
+  "path": "notes/example.md",
+  "title": "Example title",
+  "created": true
+}
+```
+
+Errors: `401` if `X-User-Email` is missing, `403` if the file exists and you are not allowed to view it, `400` if `path` or `content` is invalid.
 
 ### Restrict who can view a file
 

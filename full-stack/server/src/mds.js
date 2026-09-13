@@ -150,6 +150,57 @@ export function createMdsRouter(mdsDir, commentsDir, accessDir) {
     }
   });
 
+  router.post("/file", async (req, res) => {
+    const rel = req.body?.path;
+    const content = req.body?.content;
+    const requester = normalizeViewerEmail(req.get("x-user-email"));
+
+    if (typeof rel !== "string" || !rel.trim()) {
+      res.status(400).json({ error: "path is required" });
+      return;
+    }
+    if (typeof content !== "string" || !content.trim()) {
+      res.status(400).json({ error: "content is required" });
+      return;
+    }
+    if (!requester) {
+      res.status(401).json({ error: "X-User-Email is required" });
+      return;
+    }
+
+    try {
+      const normalizedPath = rel.replace(/\\/g, "/");
+      const full = resolveSafeMd(normalizedPath);
+      let existed = false;
+
+      try {
+        await fs.access(full);
+        existed = true;
+        const accessList = await readAccessList(accessDir, normalizedPath);
+        if (!canViewFile(requester, accessList)) {
+          res.status(403).json({ error: "access denied" });
+          return;
+        }
+      } catch (e) {
+        if (/** @type {NodeJS.ErrnoException} */ (e).code !== "ENOENT") {
+          throw e;
+        }
+      }
+
+      await fs.mkdir(path.dirname(full), { recursive: true });
+      await fs.writeFile(full, content, "utf8");
+
+      res.status(existed ? 200 : 201).json({
+        path: normalizedPath,
+        title: titleFromFirstLine(content),
+        created: !existed,
+      });
+    } catch (e) {
+      const err = /** @type {Error} */ (e);
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   async function readMdContent(rel) {
     const full = resolveSafeMd(rel);
     return fs.readFile(full, "utf8");

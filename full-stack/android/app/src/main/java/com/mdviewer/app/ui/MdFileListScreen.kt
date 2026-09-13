@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -23,13 +23,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.mdviewer.app.BuildConfig
-import com.mdviewer.app.data.MdFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mdviewer.app.BuildConfig
+import com.mdviewer.app.data.MdFile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,70 +73,71 @@ fun MdFileListScreen(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val state = uiState) {
-                MdFileListUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-
-                is MdFileListUiState.Error -> {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            text = "Cannot reach server",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            text = BuildConfig.SERVER_BASE_URL,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(
-                            text = "Use http://, same Wi‑Fi as the PC, and open port 3000 in the firewall.",
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                        )
-                        Button(onClick = viewModel::refresh) {
-                            Text("Retry")
+                    MdFileListUiState.Loading -> {
+                        if (!isRefreshing) {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                         }
                     }
-                }
 
-                is MdFileListUiState.Success -> {
-                    if (state.files.isEmpty()) {
-                        Text(
-                            text = "No markdown files found",
+                    is MdFileListUiState.Error -> {
+                        Column(
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .padding(24.dp),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            items(state.files, key = { it.path }) { file ->
-                                Text(
-                                    text = file.title,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onFileClick(file) }
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        color = MaterialTheme.colorScheme.primary,
-                                        textDecoration = TextDecoration.Underline,
-                                    ),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                            Text(
+                                text = "Cannot reach server",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text = BuildConfig.SERVER_BASE_URL,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = state.message,
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = "Use http://, same Wi‑Fi as the PC, and open port 3000 in the firewall.",
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Button(onClick = viewModel::refresh) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+
+                    is MdFileListUiState.Success -> {
+                        if (state.files.isEmpty()) {
+                            Text(
+                                text = "No markdown files found",
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(24.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        } else {
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(state.files, key = { it.path }) { file ->
+                                    Text(
+                                        text = file.title,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onFileClick(file) }
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            textDecoration = TextDecoration.Underline,
+                                        ),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                     }
@@ -144,5 +145,4 @@ fun MdFileListScreen(
             }
         }
     }
-}
 }

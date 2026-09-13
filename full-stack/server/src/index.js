@@ -19,10 +19,6 @@ const accessDir =
 app.use(express.json({ limit: "2mb" }));
 app.use(requestLoggingMiddleware);
 
-app.get("/", (_req, res) => {
-  res.send("Hello World");
-});
-
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "md-viewer-fullstack-server", mdsDir });
 });

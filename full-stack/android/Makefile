@@ -19,6 +19,12 @@ sha1: local.properties
 
 ## Install debug APK on connected device or emulator
 install: local.properties
+	@adb devices | grep -w device >/dev/null || { \
+		echo "No connected Android device or emulator."; \
+		echo "  USB phone: enable Developer options + USB debugging, then run: adb devices"; \
+		echo "  Emulator: create/start an AVD in Android Studio (Device Manager), then retry."; \
+		exit 1; \
+	}
 	$(GRADLE) installDebug -PserverUrl=$(SERVER_URL)
 
 ## Remove app from connected device (fixes INSTALL_FAILED_UPDATE_INCOMPATIBLE)
