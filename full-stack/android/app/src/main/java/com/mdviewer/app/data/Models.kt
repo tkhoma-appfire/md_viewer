@@ -10,3 +10,18 @@ data class MdsListResponse(val files: List<MdFile>)
 
 @JsonClass(generateAdapter = true)
 data class MdFileContentResponse(val path: String, val content: String)
+
+@JsonClass(generateAdapter = true)
+data class MdComment(
+    val id: String,
+    val line: Int,
+    val text: String,
+    val email: String,
+    val createdAt: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class MdCommentsResponse(val path: String, val comments: List<MdComment>)
+
+@JsonClass(generateAdapter = true)
+data class AddCommentRequest(val path: String, val line: Int, val text: String)

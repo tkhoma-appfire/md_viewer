@@ -47,6 +47,12 @@ This folder is gitignored; files stay on your machine and are not committed.
 | `GET` | `/api/health` | Service status and resolved `mdsDir` |
 | `GET` | `/api/mds/` | List `.md` files with `path` and `title` (first line, `#` stripped) |
 | `GET` | `/api/mds/file?path=…` | Read one file’s content |
+| `GET` | `/api/mds/comments?path=…` | List comments for a file |
+| `POST` | `/api/mds/comments` | Add a comment (`{ path, line, text }`; author from `X-User-Email`) |
+
+Every request is logged to stdout with timestamp, `X-User-Email` (or `(anonymous)`), method, path, status, and duration. The Android app sends the signed-in user’s email in that header.
+
+Comments are stored under `comments/` (gitignored), one JSON file per markdown path.
 
 ### List files
 

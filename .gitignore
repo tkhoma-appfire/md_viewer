@@ -2,3 +2,4 @@ node_modules/
 dist/
 server/mds/
 full-stack/server/mds/
+full-stack/server/comments/

@@ -1,11 +1,13 @@
 import { Router } from "express";
 import fs from "fs/promises";
 import path from "path";
+import { attachCommentRoutes } from "./comments.js";
 
 /**
  * @param {string} mdsDir Absolute path to markdown root.
+ * @param {string} commentsDir Absolute path to comment storage.
  */
-export function createMdsRouter(mdsDir) {
+export function createMdsRouter(mdsDir, commentsDir) {
   const root = path.resolve(mdsDir);
 
   function resolveSafeMd(rel) {
@@ -116,8 +118,7 @@ export function createMdsRouter(mdsDir) {
       return;
     }
     try {
-      const full = resolveSafeMd(rel);
-      const content = await fs.readFile(full, "utf8");
+      const content = await readMdContent(rel);
       res.json({ path: rel.replace(/\\/g, "/"), content });
     } catch (e) {
       if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
@@ -128,6 +129,13 @@ export function createMdsRouter(mdsDir) {
       res.status(400).json({ error: err.message });
     }
   });
+
+  async function readMdContent(rel) {
+    const full = resolveSafeMd(rel);
+    return fs.readFile(full, "utf8");
+  }
+
+  attachCommentRoutes(router, commentsDir, readMdContent);
 
   return router;
 }

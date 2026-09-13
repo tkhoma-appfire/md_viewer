@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mdviewer.app.BuildConfig
+import com.mdviewer.app.data.ApiClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +21,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             userSession.userFlow.collect { user ->
+                ApiClient.setUserEmail(user?.email)
                 _uiState.value = if (user != null) {
                     AuthUiState.SignedIn(user)
                 } else {
