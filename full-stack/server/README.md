@@ -34,10 +34,13 @@ Default URL: **http://localhost:3000**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | HTTP port |
-| `COMMENTS_DIR` | `./comments` locally; `/tmp/md-viewer/comments` on Vercel | Comment JSON storage (gitignored locally) |
-| `ACCESS_DIR` | `./access` locally; `/tmp/md-viewer/access` on Vercel | Viewer access lists (gitignored locally) |
+| `BLOB_READ_WRITE_TOKEN` | *(unset)* | When set, comments and access lists are stored in **Vercel Blob** instead of the local filesystem |
+| `COMMENTS_DIR` | `./comments` | Comment JSON directory when Blob is not configured (gitignored locally) |
+| `ACCESS_DIR` | `./access` | Viewer access lists when Blob is not configured (gitignored locally) |
 
-On **Vercel**, the deployment filesystem is read-only except `/tmp`. Comments and access lists are written under `/tmp/md-viewer/` automatically when `VERCEL` is set. That storage is **ephemeral** (can reset on cold starts). Markdown files are read from the bundled `mds/` folder in the repo.
+**Local / Docker:** leave `BLOB_READ_WRITE_TOKEN` unset. Comments and access data are written under `comments/` and `access/` (or the dirs from `COMMENTS_DIR` / `ACCESS_DIR`).
+
+**Vercel:** create a Blob store in the project, add `BLOB_READ_WRITE_TOKEN` to the project environment, and redeploy. Markdown files are still read from the bundled `mds/` folder in the repo; only comments and access lists use Blob.
 
 Example with a custom port:
 
@@ -51,7 +54,7 @@ The server binds to `0.0.0.0`, so it is reachable from other devices on your net
 
 Markdown files live in **`full-stack/server/mds/`** (committed with the repo). Subfolders are scanned recursively. Symbolic links to `.md` files or directories are followed. The server always reads from this path; it is not configurable.
 
-Comments and access lists stay under `comments/` and `access/` (gitignored).
+Comments and access lists stay under `comments/` and `access/` when running locally (gitignored). On Vercel they are stored in Blob when `BLOB_READ_WRITE_TOKEN` is configured.
 
 ## API
 
@@ -70,9 +73,9 @@ Comments and access lists stay under `comments/` and `access/` (gitignored).
 
 Every request is logged to stdout with timestamp, `X-User-Email` (or `(anonymous)`), method, path, status, and duration. The Android app sends the signed-in user’s email in that header.
 
-Comments are stored under `comments/` (gitignored), one JSON file per markdown path.
+Comments are stored as JSON (one object per markdown path). Locally that is a file under `comments/`; on Vercel with Blob configured, objects live at `comments/<path>.json` in your Blob store.
 
-**Viewer access:** If a file has no access record, any client can list and read it. After `PUT /api/mds/access`, only emails in that list (matched case-insensitively) can list, read, comment on, or update access for the file. The user who creates the list is added automatically if missing. Access lists are stored under `access/` (gitignored).
+**Viewer access:** If a file has no access record, any client can list and read it. After `PUT /api/mds/access`, only emails in that list (matched case-insensitively) can list, read, comment on, or update access for the file. The user who creates the list is added automatically if missing. Access lists use the same storage backend as comments (`access/` locally, Vercel Blob on production when configured).
 
 If `GET /api/mds/` returns `{ "files": [] }` but markdown files exist:
 
@@ -245,9 +248,27 @@ Set the Vercel project **Root Directory** to `full-stack/server` (or deploy from
 
 Production URL example: `https://md-viewer-pied.vercel.app/`
 
-If `POST /api/mds/comments` returned `markdown file not found` while `GET /api/mds/file` worked, the server was trying to save comments under the read-only deployment directory. Current code writes comments and access data to `/tmp/md-viewer/` on Vercel instead.
+### Persistent comments and access lists
 
-Check `/api/health` — it reports `commentsDir`, `accessDir`, and `"vercel": true`.
+Vercel’s deployment filesystem is read-only. Comments and access data must go to **Vercel Blob**:
+
+1. In the Vercel project: **Storage → Create → Blob** (or link an existing store).
+2. Copy the **`BLOB_READ_WRITE_TOKEN`** into **Project Settings → Environment Variables** (Production, and Preview if you use it).
+3. Redeploy.
+
+Check **`GET /api/health`** — when Blob is wired up you should see:
+
+```json
+{
+  "storage": {
+    "comments": { "backend": "blob", "location": "vercel-blob:comments" },
+    "access": { "backend": "blob", "location": "vercel-blob:access" }
+  },
+  "blobConfigured": true
+}
+```
+
+Without `BLOB_READ_WRITE_TOKEN`, writes to comments or access endpoints fail on Vercel because the local directories are not writable.
 
 ## Docker
 

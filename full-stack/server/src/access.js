@@ -1,13 +1,4 @@
-import fs from "fs/promises";
-import path from "path";
-
-function pathToStorageKey(relPath) {
-  return relPath.replace(/\\/g, "/").replace(/\//g, "__");
-}
-
-function accessFile(accessDir, relPath) {
-  return path.join(accessDir, `${pathToStorageKey(relPath)}.json`);
-}
+import { accessObjectKey } from "./storage/index.js";
 
 export function normalizeViewerEmail(email) {
   if (typeof email !== "string") {
@@ -35,24 +26,22 @@ export function normalizeEmailList(emails) {
 }
 
 /**
+ * @param {import("./storage/index.js").JsonStorage} storage
+ * @param {string} relPath
  * @returns {Promise<{ emails: string[], updatedAt?: string, updatedBy?: string } | null>}
  * null means no access file (file is visible to everyone).
  */
-export async function readAccessList(accessDir, relPath) {
-  try {
-    const raw = await fs.readFile(accessFile(accessDir, relPath), "utf8");
-    const parsed = JSON.parse(raw);
-    return {
-      emails: normalizeEmailList(parsed.emails),
-      updatedAt: parsed.updatedAt,
-      updatedBy: parsed.updatedBy,
-    };
-  } catch (e) {
-    if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
-      return null;
-    }
-    throw e;
+export async function readAccessList(storage, relPath) {
+  const raw = await storage.readText(accessObjectKey(relPath));
+  if (raw == null) {
+    return null;
   }
+  const parsed = JSON.parse(raw);
+  return {
+    emails: normalizeEmailList(parsed.emails),
+    updatedAt: parsed.updatedAt,
+    updatedBy: parsed.updatedBy,
+  };
 }
 
 export function canViewFile(viewerEmail, accessList) {
@@ -66,37 +55,35 @@ export function canViewFile(viewerEmail, accessList) {
   return accessList.emails.includes(normalizedViewer);
 }
 
-async function writeAccessList(accessDir, relPath, emails, updatedBy) {
-  await fs.mkdir(accessDir, { recursive: true });
+/**
+ * @param {import("./storage/index.js").JsonStorage} storage
+ */
+async function writeAccessList(storage, relPath, emails, updatedBy) {
   const payload = {
     emails: normalizeEmailList(emails),
     updatedAt: new Date().toISOString(),
     updatedBy: normalizeViewerEmail(updatedBy),
   };
-  await fs.writeFile(
-    accessFile(accessDir, relPath),
+  await storage.writeText(
+    accessObjectKey(relPath),
     `${JSON.stringify(payload, null, 2)}\n`,
-    "utf8",
   );
   return payload;
 }
 
-async function deleteAccessList(accessDir, relPath) {
-  try {
-    await fs.unlink(accessFile(accessDir, relPath));
-  } catch (e) {
-    if (/** @type {NodeJS.ErrnoException} */ (e).code !== "ENOENT") {
-      throw e;
-    }
-  }
+/**
+ * @param {import("./storage/index.js").JsonStorage} storage
+ */
+async function deleteAccessList(storage, relPath) {
+  await storage.deleteText(accessObjectKey(relPath));
 }
 
 /**
  * @param {import("express").Router} router
- * @param {string} accessDir
+ * @param {import("./storage/index.js").JsonStorage} accessStorage
  * @param {(rel: string) => string} resolveSafeMd
  */
-export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
+export function attachAccessRoutes(router, accessStorage, resolveSafeMd) {
   router.get("/access", async (req, res) => {
     const rel = req.query.path;
     if (typeof rel !== "string") {
@@ -108,7 +95,7 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
       const normalizedPath = rel.replace(/\\/g, "/");
       resolveSafeMd(normalizedPath);
       const viewerEmail = normalizeViewerEmail(req.get("x-user-email"));
-      const accessList = await readAccessList(accessDir, normalizedPath);
+      const accessList = await readAccessList(accessStorage, normalizedPath);
       if (!canViewFile(viewerEmail, accessList)) {
         res.status(403).json({ error: "access denied" });
         return;
@@ -151,7 +138,7 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
         return;
       }
 
-      const existing = await readAccessList(accessDir, normalizedPath);
+      const existing = await readAccessList(accessStorage, normalizedPath);
       if (existing && !canViewFile(requester, existing)) {
         res.status(403).json({ error: "access denied" });
         return;
@@ -163,7 +150,7 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
       }
 
       const saved = await writeAccessList(
-        accessDir,
+        accessStorage,
         normalizedPath,
         finalEmails,
         requester,
@@ -202,7 +189,7 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
     try {
       const normalizedPath = rel.replace(/\\/g, "/");
       resolveSafeMd(normalizedPath);
-      const existing = await readAccessList(accessDir, normalizedPath);
+      const existing = await readAccessList(accessStorage, normalizedPath);
       if (!existing) {
         res.status(404).json({ error: "no access restrictions for this file" });
         return;
@@ -224,7 +211,7 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
 
       const remaining = existing.emails.filter((entry) => entry !== normalizedEmail);
       if (remaining.length === 0) {
-        await deleteAccessList(accessDir, normalizedPath);
+        await deleteAccessList(accessStorage, normalizedPath);
         res.json({
           path: normalizedPath,
           email: normalizedEmail,
@@ -235,7 +222,7 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
       }
 
       const saved = await writeAccessList(
-        accessDir,
+        accessStorage,
         normalizedPath,
         remaining,
         requester,
@@ -255,8 +242,11 @@ export function attachAccessRoutes(router, accessDir, resolveSafeMd) {
   });
 }
 
-export async function assertCanViewFile(accessDir, relPath, viewerEmail) {
-  const accessList = await readAccessList(accessDir, relPath);
+/**
+ * @param {import("./storage/index.js").JsonStorage} accessStorage
+ */
+export async function assertCanViewFile(accessStorage, relPath, viewerEmail) {
+  const accessList = await readAccessList(accessStorage, relPath);
   if (!canViewFile(viewerEmail, accessList)) {
     const error = new Error("access denied");
     /** @type {Error & { status?: number }} */ (error).status = 403;

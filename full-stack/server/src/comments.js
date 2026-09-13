@@ -1,44 +1,38 @@
-import fs from "fs/promises";
-import path from "path";
 import crypto from "crypto";
 import { normalizeViewerEmail } from "./access.js";
+import { commentObjectKey } from "./storage/index.js";
 
-function pathToStorageKey(relPath) {
-  return relPath.replace(/\\/g, "/").replace(/\//g, "__");
-}
-
-function commentsFile(commentsDir, relPath) {
-  return path.join(commentsDir, `${pathToStorageKey(relPath)}.json`);
-}
-
-export async function readComments(commentsDir, relPath) {
-  try {
-    const raw = await fs.readFile(commentsFile(commentsDir, relPath), "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed.comments) ? parsed.comments : [];
-  } catch (e) {
-    if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
-      return [];
-    }
-    throw e;
+/**
+ * @param {import("./storage/index.js").JsonStorage} storage
+ * @param {string} relPath
+ */
+export async function readComments(storage, relPath) {
+  const raw = await storage.readText(commentObjectKey(relPath));
+  if (raw == null) {
+    return [];
   }
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed.comments) ? parsed.comments : [];
 }
 
-async function writeComments(commentsDir, relPath, comments) {
-  await fs.mkdir(commentsDir, { recursive: true });
-  await fs.writeFile(
-    commentsFile(commentsDir, relPath),
+/**
+ * @param {import("./storage/index.js").JsonStorage} storage
+ * @param {string} relPath
+ * @param {unknown[]} comments
+ */
+async function writeComments(storage, relPath, comments) {
+  await storage.writeText(
+    commentObjectKey(relPath),
     `${JSON.stringify({ comments }, null, 2)}\n`,
-    "utf8",
   );
 }
 
 /**
  * @param {import("express").Router} router
- * @param {string} commentsDir
+ * @param {import("./storage/index.js").JsonStorage} commentStorage
  * @param {(rel: string, viewerEmail?: string | null) => Promise<string>} readMdContent
  */
-export function attachCommentRoutes(router, commentsDir, readMdContent) {
+export function attachCommentRoutes(router, commentStorage, readMdContent) {
   router.get("/comments", async (req, res) => {
     const rel = req.query.path;
     if (typeof rel !== "string") {
@@ -49,7 +43,7 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
       const normalizedPath = rel.replace(/\\/g, "/");
       const viewerEmail = req.get("x-user-email");
       await readMdContent(normalizedPath, viewerEmail);
-      const comments = await readComments(commentsDir, normalizedPath);
+      const comments = await readComments(commentStorage, normalizedPath);
       res.json({ path: normalizedPath, comments });
     } catch (e) {
       const err = /** @type {Error & { status?: number }} */ (e);
@@ -89,7 +83,7 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
         return;
       }
 
-      const comments = await readComments(commentsDir, normalizedPath);
+      const comments = await readComments(commentStorage, normalizedPath);
       const comment = {
         id: crypto.randomUUID(),
         line,
@@ -100,9 +94,9 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
       comments.push(comment);
       comments.sort((a, b) => a.line - b.line || a.createdAt.localeCompare(b.createdAt));
       try {
-        await writeComments(commentsDir, normalizedPath, comments);
+        await writeComments(commentStorage, normalizedPath, comments);
       } catch (e) {
-        const writeErr = /** @type {NodeJS.ErrnoException} */ (e);
+        const writeErr = /** @type {Error} */ (e);
         res.status(500).json({
           error: "failed to save comment",
           detail: writeErr.message,
@@ -145,7 +139,7 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
     try {
       const normalizedPath = rel.replace(/\\/g, "/");
       await readMdContent(normalizedPath, requester);
-      const comments = await readComments(commentsDir, normalizedPath);
+      const comments = await readComments(commentStorage, normalizedPath);
       const index = comments.findIndex((comment) => comment.id === id);
       if (index === -1) {
         res.status(404).json({ error: "comment not found" });
@@ -160,9 +154,9 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
 
       comments.splice(index, 1);
       try {
-        await writeComments(commentsDir, normalizedPath, comments);
+        await writeComments(commentStorage, normalizedPath, comments);
       } catch (e) {
-        const writeErr = /** @type {NodeJS.ErrnoException} */ (e);
+        const writeErr = /** @type {Error} */ (e);
         res.status(500).json({
           error: "failed to save comment",
           detail: writeErr.message,

@@ -4,9 +4,7 @@ import path from "path";
 import {
   assertCanViewFile,
   attachAccessRoutes,
-  canViewFile,
   normalizeViewerEmail,
-  readAccessList,
 } from "./access.js";
 import { attachCommentRoutes } from "./comments.js";
 
@@ -71,10 +69,10 @@ export async function listMdFilePaths(root, dir = root, base = "", seenDirs = ne
 
 /**
  * @param {string} mdsDir Absolute path to markdown root.
- * @param {string} commentsDir Absolute path to comment storage.
- * @param {string} accessDir Absolute path to viewer access storage.
+ * @param {import("./storage/index.js").JsonStorage} commentStorage
+ * @param {import("./storage/index.js").JsonStorage} accessStorage
  */
-export function createMdsRouter(mdsDir, commentsDir, accessDir) {
+export function createMdsRouter(mdsDir, commentStorage, accessStorage) {
   const root = path.resolve(mdsDir);
 
   function resolveSafeMd(rel) {
@@ -101,15 +99,10 @@ export function createMdsRouter(mdsDir, commentsDir, accessDir) {
     return firstLine.replace(/#/g, "").trim();
   }
 
-  async function listMdFilesWithTitles(viewerEmail) {
+  async function listMdFilesWithTitles() {
     const paths = await listMdFilePaths(root);
     const files = [];
     for (const { path: relPath } of paths) {
-      const accessList = await readAccessList(accessDir, relPath);
-      console.log(accessList + " " + viewerEmail + " " + canViewFile(viewerEmail, accessList));
-      if (!canViewFile(viewerEmail, accessList)) {
-        continue;
-      }
       const full = path.resolve(root, relPath);
       let title = "";
       try {
@@ -125,10 +118,9 @@ export function createMdsRouter(mdsDir, commentsDir, accessDir) {
 
   const router = Router();
 
-  router.get("/", async (req, res) => {
+  router.get("/", async (_req, res) => {
     try {
-      const viewerEmail = normalizeViewerEmail(req.get("x-user-email"));
-      const files = await listMdFilesWithTitles(viewerEmail);
+      const files = await listMdFilesWithTitles();
       res.json({ files });
     } catch (e) {
       res.status(500).json({ error: String(/** @type {Error} */ (e).message) });
@@ -144,7 +136,7 @@ export function createMdsRouter(mdsDir, commentsDir, accessDir) {
     try {
       const normalizedPath = rel.replace(/\\/g, "/");
       const viewerEmail = normalizeViewerEmail(req.get("x-user-email"));
-      await assertCanViewFile(accessDir, normalizedPath, viewerEmail);
+      await assertCanViewFile(accessStorage, normalizedPath, viewerEmail);
       const content = await readMdContent(normalizedPath);
       res.json({ path: normalizedPath, content });
     } catch (e) {
@@ -168,12 +160,12 @@ export function createMdsRouter(mdsDir, commentsDir, accessDir) {
 
   async function readMdContentWithAccess(rel, viewerEmail) {
     const normalizedPath = rel.replace(/\\/g, "/");
-    await assertCanViewFile(accessDir, normalizedPath, viewerEmail);
+    await assertCanViewFile(accessStorage, normalizedPath, viewerEmail);
     return readMdContent(normalizedPath);
   }
 
-  attachAccessRoutes(router, accessDir, resolveSafeMd);
-  attachCommentRoutes(router, commentsDir, readMdContentWithAccess);
+  attachAccessRoutes(router, accessStorage, resolveSafeMd);
+  attachCommentRoutes(router, commentStorage, readMdContentWithAccess);
 
   return router;
 }

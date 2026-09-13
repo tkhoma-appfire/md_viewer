@@ -1,7 +1,7 @@
 import express from "express";
 import fs from "fs/promises";
 import { createMdsRouter, listMdFilePaths } from "./mds.js";
-import { accessDir, commentsDir, mdsDir } from "./paths.js";
+import { accessStorage, commentStorage, mdsDir } from "./paths.js";
 import { requestLoggingMiddleware } from "./requestLog.js";
 
 const app = express();
@@ -27,13 +27,22 @@ app.get("/api/health", async (_req, res) => {
     mdsDir,
     mdsExists,
     mdFilesOnDisk,
-    commentsDir,
-    accessDir,
+    storage: {
+      comments: {
+        backend: commentStorage.backend,
+        location: commentStorage.location,
+      },
+      access: {
+        backend: accessStorage.backend,
+        location: accessStorage.location,
+      },
+    },
     vercel: Boolean(process.env.VERCEL),
+    blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
   });
 });
 
-app.use("/api/mds", createMdsRouter(mdsDir, commentsDir, accessDir));
+app.use("/api/mds", createMdsRouter(mdsDir, commentStorage, accessStorage));
 
 export default app;
 
