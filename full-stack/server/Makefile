@@ -14,7 +14,9 @@ run:
 	docker run --rm --network host \
 	  -v $(CURDIR)/mds:/data/mds \
 	  -v $(CURDIR)/comments:/app/comments \
+	  -v $(CURDIR)/access:/app/access \
 	  -e COMMENTS_DIR=/app/comments \
+	  -e ACCESS_DIR=/app/access \
 	  $(IMAGE)
 
 ## Run container with port mapping
@@ -22,7 +24,9 @@ run-port:
 	docker run --rm -p $(PORT):3000 \
 	  -v $(CURDIR)/mds:/data/mds \
 	  -v $(CURDIR)/comments:/app/comments \
+	  -v $(CURDIR)/access:/app/access \
 	  -e COMMENTS_DIR=/app/comments \
+	  -e ACCESS_DIR=/app/access \
 	  $(IMAGE)
 
 ## Run without Docker

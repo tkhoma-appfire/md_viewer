@@ -27,9 +27,11 @@ fun MdCommentDialog(
     lineNumber: Int,
     lineText: String,
     comments: List<MdComment>,
+    userEmail: String,
     error: String?,
     onDismiss: () -> Unit,
     onAddComment: (text: String, onSuccess: () -> Unit) -> Unit,
+    onDeleteComment: (commentId: String) -> Unit,
     onClearError: () -> Unit,
 ) {
     var commentText by rememberSaveable(lineNumber) { mutableStateOf("") }
@@ -59,7 +61,12 @@ fun MdCommentDialog(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     comments.forEach { comment ->
-                        MdCommentBody(comment = comment)
+                        MdCommentBody(
+                            comment = comment,
+                            canDelete = comment.email.equals(userEmail, ignoreCase = true),
+                            onDelete = { onDeleteComment(comment.id) },
+                            useDeleteIcon = true,
+                        )
                     }
                 }
 

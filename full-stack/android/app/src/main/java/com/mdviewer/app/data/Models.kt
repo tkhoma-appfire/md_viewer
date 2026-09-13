@@ -25,3 +25,6 @@ data class MdCommentsResponse(val path: String, val comments: List<MdComment>)
 
 @JsonClass(generateAdapter = true)
 data class AddCommentRequest(val path: String, val line: Int, val text: String)
+
+@JsonClass(generateAdapter = true)
+data class DeleteCommentRequest(val path: String, val id: String)

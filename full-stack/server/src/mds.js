@@ -1,13 +1,21 @@
 import { Router } from "express";
 import fs from "fs/promises";
 import path from "path";
+import {
+  assertCanViewFile,
+  attachAccessRoutes,
+  canViewFile,
+  normalizeViewerEmail,
+  readAccessList,
+} from "./access.js";
 import { attachCommentRoutes } from "./comments.js";
 
 /**
  * @param {string} mdsDir Absolute path to markdown root.
  * @param {string} commentsDir Absolute path to comment storage.
+ * @param {string} accessDir Absolute path to viewer access storage.
  */
-export function createMdsRouter(mdsDir, commentsDir) {
+export function createMdsRouter(mdsDir, commentsDir, accessDir) {
   const root = path.resolve(mdsDir);
 
   function resolveSafeMd(rel) {
@@ -83,10 +91,14 @@ export function createMdsRouter(mdsDir, commentsDir) {
     return firstLine.replace(/#/g, "").trim();
   }
 
-  async function listMdFilesWithTitles() {
+  async function listMdFilesWithTitles(viewerEmail) {
     const paths = await listMdFiles();
     const files = [];
     for (const { path: relPath } of paths) {
+      const accessList = await readAccessList(accessDir, relPath);
+      if (!canViewFile(viewerEmail, accessList)) {
+        continue;
+      }
       const full = path.resolve(root, relPath);
       let title = "";
       try {
@@ -102,9 +114,10 @@ export function createMdsRouter(mdsDir, commentsDir) {
 
   const router = Router();
 
-  router.get("/", async (_req, res) => {
+  router.get("/", async (req, res) => {
     try {
-      const files = await listMdFilesWithTitles();
+      const viewerEmail = normalizeViewerEmail(req.get("x-user-email"));
+      const files = await listMdFilesWithTitles(viewerEmail);
       res.json({ files });
     } catch (e) {
       res.status(500).json({ error: String(/** @type {Error} */ (e).message) });
@@ -118,14 +131,21 @@ export function createMdsRouter(mdsDir, commentsDir) {
       return;
     }
     try {
-      const content = await readMdContent(rel);
-      res.json({ path: rel.replace(/\\/g, "/"), content });
+      const normalizedPath = rel.replace(/\\/g, "/");
+      const viewerEmail = normalizeViewerEmail(req.get("x-user-email"));
+      await assertCanViewFile(accessDir, normalizedPath, viewerEmail);
+      const content = await readMdContent(normalizedPath);
+      res.json({ path: normalizedPath, content });
     } catch (e) {
+      const err = /** @type {Error & { status?: number }} */ (e);
+      if (err.status === 403) {
+        res.status(403).json({ error: "access denied" });
+        return;
+      }
       if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
         res.status(404).json({ error: "not found" });
         return;
       }
-      const err = /** @type {Error} */ (e);
       res.status(400).json({ error: err.message });
     }
   });
@@ -135,7 +155,14 @@ export function createMdsRouter(mdsDir, commentsDir) {
     return fs.readFile(full, "utf8");
   }
 
-  attachCommentRoutes(router, commentsDir, readMdContent);
+  async function readMdContentWithAccess(rel, viewerEmail) {
+    const normalizedPath = rel.replace(/\\/g, "/");
+    await assertCanViewFile(accessDir, normalizedPath, viewerEmail);
+    return readMdContent(normalizedPath);
+  }
+
+  attachAccessRoutes(router, accessDir, resolveSafeMd);
+  attachCommentRoutes(router, commentsDir, readMdContentWithAccess);
 
   return router;
 }

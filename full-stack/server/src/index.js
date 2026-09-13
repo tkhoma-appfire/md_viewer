@@ -13,6 +13,8 @@ const mdsDir =
   process.env.MDS_DIR || path.join(__dirname, "..", "mds");
 const commentsDir =
   process.env.COMMENTS_DIR || path.join(__dirname, "..", "comments");
+const accessDir =
+  process.env.ACCESS_DIR || path.join(__dirname, "..", "access");
 
 app.use(express.json({ limit: "2mb" }));
 app.use(requestLoggingMiddleware);
@@ -25,7 +27,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "md-viewer-fullstack-server", mdsDir });
 });
 
-app.use("/api/mds", createMdsRouter(mdsDir, commentsDir));
+app.use("/api/mds", createMdsRouter(mdsDir, commentsDir, accessDir));
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on ${port}`);

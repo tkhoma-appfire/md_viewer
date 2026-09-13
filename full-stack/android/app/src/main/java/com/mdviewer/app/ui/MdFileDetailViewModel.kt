@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mdviewer.app.data.AddCommentRequest
 import com.mdviewer.app.data.ApiClient
+import com.mdviewer.app.data.DeleteCommentRequest
 import com.mdviewer.app.data.MdComment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +61,21 @@ class MdFileDetailViewModel(
                 onSuccess()
             } catch (e: Exception) {
                 _commentError.value = e.message ?: "Failed to add comment"
+            }
+        }
+    }
+
+    fun deleteComment(commentId: String, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _commentError.value = null
+            try {
+                ApiClient.mdsApi.deleteComment(
+                    DeleteCommentRequest(path = path, id = commentId),
+                )
+                loadComments()
+                onSuccess()
+            } catch (e: Exception) {
+                _commentError.value = e.message ?: "Failed to delete comment"
             }
         }
     }

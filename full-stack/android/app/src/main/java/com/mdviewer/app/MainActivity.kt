@@ -86,6 +86,7 @@ private fun SignedInContent(
     } else {
         MdFileDetailScreen(
             file = selectedFile!!,
+            userEmail = userEmail,
             onBack = { selectedFile = null },
         )
     }

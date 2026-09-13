@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { normalizeViewerEmail } from "./access.js";
 
 function pathToStorageKey(relPath) {
   return relPath.replace(/\\/g, "/").replace(/\//g, "__");
@@ -35,7 +36,7 @@ async function writeComments(commentsDir, relPath, comments) {
 /**
  * @param {import("express").Router} router
  * @param {string} commentsDir
- * @param {(rel: string) => Promise<string>} readMdContent
+ * @param {(rel: string, viewerEmail?: string | null) => Promise<string>} readMdContent
  */
 export function attachCommentRoutes(router, commentsDir, readMdContent) {
   router.get("/comments", async (req, res) => {
@@ -45,10 +46,18 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
       return;
     }
     try {
-      const comments = await readComments(commentsDir, rel.replace(/\\/g, "/"));
-      res.json({ path: rel.replace(/\\/g, "/"), comments });
+      const normalizedPath = rel.replace(/\\/g, "/");
+      const viewerEmail = req.get("x-user-email");
+      await readMdContent(normalizedPath, viewerEmail);
+      const comments = await readComments(commentsDir, normalizedPath);
+      res.json({ path: normalizedPath, comments });
     } catch (e) {
-      res.status(500).json({ error: String(/** @type {Error} */ (e).message) });
+      const err = /** @type {Error & { status?: number }} */ (e);
+      if (err.status === 403 || err.message === "access denied") {
+        res.status(403).json({ error: "access denied" });
+        return;
+      }
+      res.status(500).json({ error: String(err.message) });
     }
   });
 
@@ -73,7 +82,7 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
 
     try {
       const normalizedPath = rel.replace(/\\/g, "/");
-      const content = await readMdContent(normalizedPath);
+      const content = await readMdContent(normalizedPath, email);
       const lineCount = content.split(/\r?\n/).length;
       if (line > lineCount) {
         res.status(400).json({ error: `line must be between 1 and ${lineCount}` });
@@ -93,8 +102,63 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
       await writeComments(commentsDir, normalizedPath, comments);
       res.status(201).json(comment);
     } catch (e) {
-      const err = /** @type {Error} */ (e);
-      if (err.message.includes("not found") || err.message.includes("ENOENT")) {
+      const err = /** @type {Error & { status?: number }} */ (e);
+      if (err.status === 403 || err.message === "access denied") {
+        res.status(403).json({ error: "access denied" });
+        return;
+      }
+      if (err.message.includes("not found") || /** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+        res.status(404).json({ error: "markdown file not found" });
+        return;
+      }
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.delete("/comments", async (req, res) => {
+    const rel = req.body?.path;
+    const id = req.body?.id;
+    const requester = normalizeViewerEmail(req.get("x-user-email"));
+
+    if (typeof rel !== "string" || !rel.trim()) {
+      res.status(400).json({ error: "path is required" });
+      return;
+    }
+    if (typeof id !== "string" || !id.trim()) {
+      res.status(400).json({ error: "id is required" });
+      return;
+    }
+    if (!requester) {
+      res.status(401).json({ error: "X-User-Email is required" });
+      return;
+    }
+
+    try {
+      const normalizedPath = rel.replace(/\\/g, "/");
+      await readMdContent(normalizedPath, requester);
+      const comments = await readComments(commentsDir, normalizedPath);
+      const index = comments.findIndex((comment) => comment.id === id);
+      if (index === -1) {
+        res.status(404).json({ error: "comment not found" });
+        return;
+      }
+
+      const comment = comments[index];
+      if (normalizeViewerEmail(comment.email) !== requester) {
+        res.status(403).json({ error: "only the comment owner can delete it" });
+        return;
+      }
+
+      comments.splice(index, 1);
+      await writeComments(commentsDir, normalizedPath, comments);
+      res.json({ path: normalizedPath, id });
+    } catch (e) {
+      const err = /** @type {Error & { status?: number }} */ (e);
+      if (err.status === 403 || err.message === "access denied") {
+        res.status(403).json({ error: "access denied" });
+        return;
+      }
+      if (err.message.includes("not found") || /** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
         res.status(404).json({ error: "markdown file not found" });
         return;
       }

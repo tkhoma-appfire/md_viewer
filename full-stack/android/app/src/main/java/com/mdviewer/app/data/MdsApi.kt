@@ -2,6 +2,7 @@ package com.mdviewer.app.data
 
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -17,4 +18,7 @@ interface MdsApi {
 
     @POST("api/mds/comments")
     suspend fun addComment(@Body body: AddCommentRequest): MdComment
+
+    @HTTP(method = "DELETE", path = "api/mds/comments", hasBody = true)
+    suspend fun deleteComment(@Body body: DeleteCommentRequest)
 }

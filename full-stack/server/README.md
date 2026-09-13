@@ -49,10 +49,16 @@ This folder is gitignored; files stay on your machine and are not committed.
 | `GET` | `/api/mds/file?path=…` | Read one file’s content |
 | `GET` | `/api/mds/comments?path=…` | List comments for a file |
 | `POST` | `/api/mds/comments` | Add a comment (`{ path, line, text }`; author from `X-User-Email`) |
+| `DELETE` | `/api/mds/comments` | Remove own comment (`{ path, id }`; requires `X-User-Email`) |
+| `GET` | `/api/mds/access?path=…` | List viewer emails allowed for a file |
+| `PUT` | `/api/mds/access` | Set viewer emails (`{ path, emails }`; requires `X-User-Email`) |
+| `DELETE` | `/api/mds/access` | Remove one viewer email (`{ path, email }`; requires `X-User-Email`) |
 
 Every request is logged to stdout with timestamp, `X-User-Email` (or `(anonymous)`), method, path, status, and duration. The Android app sends the signed-in user’s email in that header.
 
 Comments are stored under `comments/` (gitignored), one JSON file per markdown path.
+
+**Viewer access:** If a file has no access record, any client can list and read it. After `PUT /api/mds/access`, only emails in that list (matched case-insensitively) can list, read, comment on, or update access for the file. The user who creates the list is added automatically if missing. Access lists are stored under `access/` (gitignored).
 
 ### List files
 
@@ -88,6 +94,95 @@ Response:
 ```
 
 Errors: `400` for invalid path, `404` if the file does not exist.
+
+### Restrict who can view a file
+
+First request creates the access list. Send your email in `X-User-Email`; it is added automatically if not already in `emails`.
+
+```bash
+curl -X PUT http://localhost:3000/api/mds/access \
+  -H "Content-Type: application/json" \
+  -H "X-User-Email: you@example.com" \
+  -d '{
+    "path": "notes/example.md",
+    "emails": ["you@example.com", "colleague@example.com"]
+  }'
+```
+
+Response:
+
+```json
+{
+  "path": "notes/example.md",
+  "emails": ["colleague@example.com", "you@example.com"],
+  "restricted": true,
+  "updatedAt": "2026-09-13T07:00:00.000Z",
+  "updatedBy": "you@example.com"
+}
+```
+
+To read the current list (requires an allowed email once restricted):
+
+```bash
+curl "http://localhost:3000/api/mds/access?path=notes/example.md" \
+  -H "X-User-Email: you@example.com"
+```
+
+Errors: `401` if `X-User-Email` is missing on `PUT`, `403` if the caller is not allowed to view or update the file, `400` if `path` or `emails` is invalid.
+
+Remove one email from the list (caller must already be allowed to view the file). If that was the last email, restrictions are cleared and the file becomes public again.
+
+```bash
+curl -X DELETE http://localhost:3000/api/mds/access \
+  -H "Content-Type: application/json" \
+  -H "X-User-Email: you@example.com" \
+  -d '{
+    "path": "notes/example.md",
+    "email": "colleague@example.com"
+  }'
+```
+
+Response:
+
+```json
+{
+  "path": "notes/example.md",
+  "email": "colleague@example.com",
+  "emails": ["you@example.com"],
+  "restricted": true,
+  "updatedAt": "2026-09-13T07:00:00.000Z",
+  "updatedBy": "you@example.com"
+}
+```
+
+If the removed email was the last one, `restricted` is `false` and `emails` is `[]`.
+
+Errors: `401` if `X-User-Email` is missing, `403` if the caller cannot view the file, `404` if there is no access list or the email is not listed.
+
+### Delete your comment
+
+Only the comment author (matched by `X-User-Email`, case-insensitive) can delete it.
+
+```bash
+curl -X DELETE http://localhost:3000/api/mds/comments \
+  -H "Content-Type: application/json" \
+  -H "X-User-Email: you@example.com" \
+  -d '{
+    "path": "notes/example.md",
+    "id": "comment-uuid-from-get-comments"
+  }'
+```
+
+Response:
+
+```json
+{
+  "path": "notes/example.md",
+  "id": "comment-uuid-from-get-comments"
+}
+```
+
+Errors: `401` if `X-User-Email` is missing, `403` if you are not the comment owner, `404` if the comment or file is not found.
 
 ## Docker
 
