@@ -99,7 +99,16 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
       };
       comments.push(comment);
       comments.sort((a, b) => a.line - b.line || a.createdAt.localeCompare(b.createdAt));
-      await writeComments(commentsDir, normalizedPath, comments);
+      try {
+        await writeComments(commentsDir, normalizedPath, comments);
+      } catch (e) {
+        const writeErr = /** @type {NodeJS.ErrnoException} */ (e);
+        res.status(500).json({
+          error: "failed to save comment",
+          detail: writeErr.message,
+        });
+        return;
+      }
       res.status(201).json(comment);
     } catch (e) {
       const err = /** @type {Error & { status?: number }} */ (e);
@@ -107,7 +116,7 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
         res.status(403).json({ error: "access denied" });
         return;
       }
-      if (err.message.includes("not found") || /** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+      if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
         res.status(404).json({ error: "markdown file not found" });
         return;
       }
@@ -150,7 +159,16 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
       }
 
       comments.splice(index, 1);
-      await writeComments(commentsDir, normalizedPath, comments);
+      try {
+        await writeComments(commentsDir, normalizedPath, comments);
+      } catch (e) {
+        const writeErr = /** @type {NodeJS.ErrnoException} */ (e);
+        res.status(500).json({
+          error: "failed to save comment",
+          detail: writeErr.message,
+        });
+        return;
+      }
       res.json({ path: normalizedPath, id });
     } catch (e) {
       const err = /** @type {Error & { status?: number }} */ (e);
@@ -158,7 +176,7 @@ export function attachCommentRoutes(router, commentsDir, readMdContent) {
         res.status(403).json({ error: "access denied" });
         return;
       }
-      if (err.message.includes("not found") || /** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+      if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
         res.status(404).json({ error: "markdown file not found" });
         return;
       }

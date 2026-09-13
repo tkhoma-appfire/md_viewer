@@ -11,6 +11,65 @@ import {
 import { attachCommentRoutes } from "./comments.js";
 
 /**
+ * @param {string} root
+ * @param {string} [dir]
+ * @param {string} [base]
+ * @param {Set<string>} [seenDirs]
+ * @returns {Promise<Array<{ path: string }>>}
+ */
+export async function listMdFilePaths(root, dir = root, base = "", seenDirs = new Set()) {
+  const resolvedRoot = path.resolve(root);
+
+  let realDir;
+  try {
+    realDir = await fs.realpath(dir);
+  } catch (e) {
+    if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+      return [];
+    }
+    throw e;
+  }
+  if (seenDirs.has(realDir)) {
+    return [];
+  }
+  seenDirs.add(realDir);
+
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch (e) {
+    if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+      return [];
+    }
+    throw e;
+  }
+
+  const out = [];
+  for (const ent of entries) {
+    const rel = base ? `${base}/${ent.name}` : ent.name;
+    const full = path.join(dir, ent.name);
+    if (ent.isDirectory()) {
+      out.push(...(await listMdFilePaths(resolvedRoot, full, rel, seenDirs)));
+    } else if (ent.isSymbolicLink()) {
+      let targetStat;
+      try {
+        targetStat = await fs.stat(full);
+      } catch {
+        continue;
+      }
+      if (targetStat.isDirectory()) {
+        out.push(...(await listMdFilePaths(resolvedRoot, full, rel, seenDirs)));
+      } else if (targetStat.isFile() && ent.name.endsWith(".md")) {
+        out.push({ path: rel.replace(/\\/g, "/") });
+      }
+    } else if (ent.isFile() && ent.name.endsWith(".md")) {
+      out.push({ path: rel.replace(/\\/g, "/") });
+    }
+  }
+  return out.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/**
  * @param {string} mdsDir Absolute path to markdown root.
  * @param {string} commentsDir Absolute path to comment storage.
  * @param {string} accessDir Absolute path to viewer access storage.
@@ -37,65 +96,17 @@ export function createMdsRouter(mdsDir, commentsDir, accessDir) {
     return full;
   }
 
-  async function listMdFiles(dir = root, base = "", seenDirs = new Set()) {
-    let realDir;
-    try {
-      realDir = await fs.realpath(dir);
-    } catch (e) {
-      if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
-        return [];
-      }
-      throw e;
-    }
-    if (seenDirs.has(realDir)) {
-      return [];
-    }
-    seenDirs.add(realDir);
-
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch (e) {
-      if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
-        return [];
-      }
-      throw e;
-    }
-    const out = [];
-    for (const ent of entries) {
-      const rel = base ? `${base}/${ent.name}` : ent.name;
-      const full = path.join(dir, ent.name);
-      if (ent.isDirectory()) {
-        out.push(...(await listMdFiles(full, rel, seenDirs)));
-      } else if (ent.isSymbolicLink()) {
-        let targetStat;
-        try {
-          targetStat = await fs.stat(full);
-        } catch {
-          continue;
-        }
-        if (targetStat.isDirectory()) {
-          out.push(...(await listMdFiles(full, rel, seenDirs)));
-        } else if (targetStat.isFile() && ent.name.endsWith(".md")) {
-          out.push({ path: rel.replace(/\\/g, "/") });
-        }
-      } else if (ent.isFile() && ent.name.endsWith(".md")) {
-        out.push({ path: rel.replace(/\\/g, "/") });
-      }
-    }
-    return out.sort((a, b) => a.path.localeCompare(b.path));
-  }
-
   function titleFromFirstLine(content) {
     const firstLine = content.split(/\r?\n/)[0] ?? "";
     return firstLine.replace(/#/g, "").trim();
   }
 
   async function listMdFilesWithTitles(viewerEmail) {
-    const paths = await listMdFiles();
+    const paths = await listMdFilePaths(root);
     const files = [];
     for (const { path: relPath } of paths) {
       const accessList = await readAccessList(accessDir, relPath);
+      console.log(accessList + " " + viewerEmail + " " + canViewFile(viewerEmail, accessList));
       if (!canViewFile(viewerEmail, accessList)) {
         continue;
       }

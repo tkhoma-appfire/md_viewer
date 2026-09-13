@@ -34,8 +34,10 @@ Default URL: **http://localhost:3000**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | HTTP port |
-| `COMMENTS_DIR` | `./comments` | Comment JSON storage (gitignored) |
-| `ACCESS_DIR` | `./access` | Viewer access lists (gitignored) |
+| `COMMENTS_DIR` | `./comments` locally; `/tmp/md-viewer/comments` on Vercel | Comment JSON storage (gitignored locally) |
+| `ACCESS_DIR` | `./access` locally; `/tmp/md-viewer/access` on Vercel | Viewer access lists (gitignored locally) |
+
+On **Vercel**, the deployment filesystem is read-only except `/tmp`. Comments and access lists are written under `/tmp/md-viewer/` automatically when `VERCEL` is set. That storage is **ephemeral** (can reset on cold starts). Markdown files are read from the bundled `mds/` folder in the repo.
 
 Example with a custom port:
 
@@ -71,6 +73,11 @@ Every request is logged to stdout with timestamp, `X-User-Email` (or `(anonymous
 Comments are stored under `comments/` (gitignored), one JSON file per markdown path.
 
 **Viewer access:** If a file has no access record, any client can list and read it. After `PUT /api/mds/access`, only emails in that list (matched case-insensitively) can list, read, comment on, or update access for the file. The user who creates the list is added automatically if missing. Access lists are stored under `access/` (gitignored).
+
+If `GET /api/mds/` returns `{ "files": [] }` but markdown files exist:
+
+1. Check **`GET /api/health`** — `mdsExists` should be `true` and `mdFilesOnDisk` should be &gt; 0. If `mdsExists` is false, rebuild Docker (`make build`) so `mds/` is copied into the image.
+2. If `mdFilesOnDisk` &gt; 0 but the list is still empty, every file may be access-restricted. Call the list with your email: `-H "X-User-Email: you@example.com"` (the Android app sends this after sign-in).
 
 ### List files
 
@@ -171,6 +178,42 @@ If the removed email was the last one, `restricted` is `false` and `emails` is `
 
 Errors: `401` if `X-User-Email` is missing, `403` if the caller cannot view the file, `404` if there is no access list or the email is not listed.
 
+### Add a comment
+
+`line` is a 1-based line number in the markdown file. The author is taken from `X-User-Email`.
+
+```bash
+curl -X POST http://localhost:3000/api/mds/comments \
+  -H "Content-Type: application/json" \
+  -H "X-User-Email: you@example.com" \
+  -d '{
+    "path": "notes/example.md",
+    "line": 1,
+    "text": "Looks good."
+  }'
+```
+
+Response (`201`):
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "line": 1,
+  "text": "Looks good.",
+  "email": "you@example.com",
+  "createdAt": "2026-09-13T07:00:00.000Z"
+}
+```
+
+List comments for a file:
+
+```bash
+curl "http://localhost:3000/api/mds/comments?path=notes/example.md" \
+  -H "X-User-Email: you@example.com"
+```
+
+Errors: `400` if `path`, `line`, or `text` is invalid, `403` if you cannot view the file, `404` if the markdown file is not found.
+
 ### Delete your comment
 
 Only the comment author (matched by `X-User-Email`, case-insensitive) can delete it.
@@ -195,6 +238,16 @@ Response:
 ```
 
 Errors: `401` if `X-User-Email` is missing, `403` if you are not the comment owner, `404` if the comment or file is not found.
+
+## Vercel
+
+Set the Vercel project **Root Directory** to `full-stack/server` (or deploy from that folder). The app exports Express from `src/index.js` for `@vercel/node`.
+
+Production URL example: `https://md-viewer-pied.vercel.app/`
+
+If `POST /api/mds/comments` returned `markdown file not found` while `GET /api/mds/file` worked, the server was trying to save comments under the read-only deployment directory. Current code writes comments and access data to `/tmp/md-viewer/` on Vercel instead.
+
+Check `/api/health` — it reports `commentsDir`, `accessDir`, and `"vercel": true`.
 
 ## Docker
 
