@@ -3,6 +3,7 @@ package com.mdviewer.app.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,13 +30,32 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MdFileListScreen(
+    userEmail: String,
+    onSignOut: () -> Unit,
     viewModel: MdFileListViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Markdown files") })
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Markdown files")
+                        Text(
+                            text = userEmail,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onSignOut) {
+                        Text("Sign out")
+                    }
+                },
+            )
         },
     ) { innerPadding ->
         Box(

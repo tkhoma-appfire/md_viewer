@@ -4,8 +4,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+import java.util.Properties
+
 // Override at build time: ./gradlew installDebug -PserverUrl=http://192.168.0.112:3000/
-val serverUrl: String = (project.findProperty("serverUrl") as String?) ?: "http://localhost:3000/"
+val serverUrl: String = (project.findProperty("serverUrl") as String?) ?: "http://192.168.0.112:3000/"
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+val googleWebClientId: String = localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: ""
 
 android {
     namespace = "com.mdviewer.app"
@@ -18,6 +27,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         buildConfigField("String", "SERVER_BASE_URL", "\"$serverUrl\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildTypes {
@@ -43,6 +53,17 @@ android {
         compose = true
         buildConfig = true
     }
+
+    @Suppress("DEPRECATION")
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = when (buildType.name) {
+                "debug" -> "md-viewer-debug.apk"
+                else -> "md-viewer.apk"
+            }
+        }
+    }
 }
 
 dependencies {
@@ -58,5 +79,9 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
