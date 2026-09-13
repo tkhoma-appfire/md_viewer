@@ -228,7 +228,8 @@ The server must be reachable on your LAN.
    ```
 6. If Docker is used and the phone still cannot connect, prefer `make run` (host network) over `make run-port`.
 
-Set the same URL in the Android app (`SERVER_BASE_URL` in `app/build.gradle.kts`) and reinstall:
+The Android app defaults to `https://md-viewer-pied.vercel.app/`. For local development, override at install time and reinstall:
+
 ```bash
-cd ../android && make install
+cd ../android && make install SERVER_URL=http://192.168.0.112:3000/
 ```

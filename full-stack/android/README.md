@@ -134,12 +134,13 @@ make run
 
 The app calls `GET /api/mds/` after sign-in and shows the returned file paths in a list.
 
-The server URL is a build-time setting. The default is `http://192.168.0.112:3000/`, which works with `make reverse`.
+The server URL is a build-time setting. The default is `https://md-viewer-pied.vercel.app/`.
 
 | Setup | Command |
 |-------|---------|
-| USB cable (no Wi-Fi needed) | `make run` |
-| Emulator | `make install SERVER_URL=http://10.0.2.2:3000/` |
+| Production (default) | `make install` |
+| Local server via USB | `make install SERVER_URL=http://127.0.0.1:3000/` and `make run` (server) |
+| Emulator + local server | `make install SERVER_URL=http://10.0.2.2:3000/` |
 | Phone on same Wi-Fi as PC | `make install SERVER_URL=http://192.168.0.112:3000/` |
 
 
@@ -170,5 +171,5 @@ If `ping` fails or there is no `wlan0` address, the phone is not on your LAN. Ei
 | "Set GOOGLE_WEB_CLIENT_ID in local.properties" | Web client ID missing; add it and rebuild. |
 | Google sign-in fails / "No credentials available" | Wrong value in `GOOGLE_WEB_CLIENT_ID` (often the `GOCSPX-` secret instead of the Web client ID), missing Android OAuth client, or account not added as test user. |
 | `"[16] Account reauth failed"` | Usually **DEVELOPER_ERROR** — Android OAuth client has wrong SHA-1 or package name, or Web client ID is wrong type. Run `./gradlew signingReport` and update the Android client in Google Cloud. OAuth consent must be **External**. |
-| App shows "Cannot reach server" | Wrong `SERVER_URL`, server not running, or phone not on the same network. |
+| App shows "Cannot reach server" | Wrong `SERVER_URL`, server down, or (for local dev) phone not on the same network. |
 | Works in `curl` but not on phone | Phone is on mobile data, not Wi-Fi. Use `make run`. |

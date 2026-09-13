@@ -5,7 +5,7 @@ SDK_DIR ?= $(firstword $(wildcard $(HOME)/Android/Sdk) $(ANDROID_HOME) $(ANDROID
 PACKAGE := com.mdviewer.app
 
 # Server the app talks to. Default works with `make reverse` over USB.
-SERVER_URL ?= http://192.168.0.112:3000/
+SERVER_URL ?= https://md-viewer-pied.vercel.app/
 
 .DEFAULT_GOAL := help
 

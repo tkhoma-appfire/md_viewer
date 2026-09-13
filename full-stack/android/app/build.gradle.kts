@@ -6,8 +6,8 @@ plugins {
 
 import java.util.Properties
 
-// Override at build time: ./gradlew installDebug -PserverUrl=http://192.168.0.112:3000/
-val serverUrl: String = (project.findProperty("serverUrl") as String?) ?: "http://192.168.0.112:3000/"
+// Override at build time: ./gradlew installDebug -PserverUrl=https://md-viewer-pied.vercel.app/
+val serverUrl: String = (project.findProperty("serverUrl") as String?) ?: "https://md-viewer-pied.vercel.app/"
 
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
