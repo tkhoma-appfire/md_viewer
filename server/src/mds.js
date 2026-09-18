@@ -27,7 +27,10 @@ export function createMdsRouter(mdsDir) {
     return full;
   }
 
-  async function listMdFiles(dir = root, base = "") {
+  /**
+   * @returns {Promise<Array<{ type: 'dir', name: string, path: string, children: unknown[] } | { type: 'file', name: string, path: string }>>}
+   */
+  async function buildTree(dir = root, base = "") {
     let entries;
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
@@ -37,25 +40,49 @@ export function createMdsRouter(mdsDir) {
       }
       throw e;
     }
-    const out = [];
+
+    const dirs = [];
+    const files = [];
     for (const ent of entries) {
-      const rel = base ? `${base}/${ent.name}` : ent.name;
-      const full = path.join(dir, ent.name);
       if (ent.isDirectory()) {
-        out.push(...(await listMdFiles(full, rel)));
+        dirs.push(ent);
       } else if (ent.isFile() && ent.name.endsWith(".md")) {
-        out.push({ path: rel.replace(/\\/g, "/") });
+        files.push(ent);
       }
     }
-    return out.sort((a, b) => a.path.localeCompare(b.path));
+    dirs.sort((a, b) => a.name.localeCompare(b.name));
+    files.sort((a, b) => a.name.localeCompare(b.name));
+
+    const nodes = [];
+    for (const ent of dirs) {
+      const rel = base ? `${base}/${ent.name}` : ent.name;
+      const children = await buildTree(path.join(dir, ent.name), rel);
+      if (children.length > 0) {
+        nodes.push({
+          type: "dir",
+          name: ent.name,
+          path: rel.replace(/\\/g, "/"),
+          children,
+        });
+      }
+    }
+    for (const ent of files) {
+      const rel = base ? `${base}/${ent.name}` : ent.name;
+      nodes.push({
+        type: "file",
+        name: ent.name,
+        path: rel.replace(/\\/g, "/"),
+      });
+    }
+    return nodes;
   }
 
   const router = Router();
 
   router.get("/", async (_req, res) => {
     try {
-      const files = await listMdFiles();
-      res.json({ files });
+      const tree = await buildTree();
+      res.json({ tree });
     } catch (e) {
       res.status(500).json({ error: String(/** @type {Error} */ (e).message) });
     }

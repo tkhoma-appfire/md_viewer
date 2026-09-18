@@ -6,7 +6,16 @@ import com.squareup.moshi.JsonClass
 data class MdFile(val path: String, val title: String)
 
 @JsonClass(generateAdapter = true)
-data class MdsListResponse(val files: List<MdFile>)
+data class MdTreeNode(
+    val type: String,
+    val name: String,
+    val path: String,
+    val title: String? = null,
+    val children: List<MdTreeNode>? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class MdsListResponse(val tree: List<MdTreeNode>)
 
 @JsonClass(generateAdapter = true)
 data class MdFileContentResponse(val path: String, val content: String)

@@ -53,6 +53,118 @@ const markdownComponents = {
   },
 };
 
+function FolderIcon({ open }) {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0 text-amber-600"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      {open ? (
+        <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z" />
+      ) : (
+        <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z" opacity="0.85" />
+      )}
+    </svg>
+  );
+}
+
+function FileIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0 text-slate-400"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+}
+
+function FileTreeNode({ node, depth, selectedPath, onSelect, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const pad = `${0.5 + depth * 0.75}rem`;
+
+  if (node.type === "file") {
+    const active = node.path === selectedPath;
+    return (
+      <li>
+        <button
+          type="button"
+          style={{ paddingLeft: pad }}
+          className={
+            active
+              ? "flex w-full items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-100 py-1.5 pr-2 text-left text-sm text-slate-800 transition hover:bg-sky-50"
+              : "flex w-full items-center gap-1.5 rounded-lg border border-transparent py-1.5 pr-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+          }
+          onClick={() => onSelect(node.path)}
+          title={node.path}
+        >
+          <FileIcon />
+          <span className="min-w-0 truncate">{node.name}</span>
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        style={{ paddingLeft: pad }}
+        className="flex w-full items-center gap-1.5 rounded-lg border border-transparent py-1.5 pr-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        title={node.path}
+      >
+        <span
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-slate-400"
+          aria-hidden
+        >
+          {open ? "▾" : "▸"}
+        </span>
+        <FolderIcon open={open} />
+        <span className="min-w-0 truncate">{node.name}</span>
+      </button>
+      {open && node.children?.length > 0 && (
+        <ul className="mt-0.5 list-none space-y-0.5 p-0">
+          {node.children.map((child) => (
+            <FileTreeNode
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              selectedPath={selectedPath}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function FileTree({ tree, selectedPath, onSelect }) {
+  if (!tree?.length) return null;
+  return (
+    <ul className="list-none space-y-0.5 p-0">
+      {tree.map((node) => (
+        <FileTreeNode
+          key={node.path}
+          node={node}
+          depth={0}
+          selectedPath={selectedPath}
+          onSelect={onSelect}
+        />
+      ))}
+    </ul>
+  );
+}
+
 function CollapseIcon({ direction }) {
   const isLeft = direction === "left";
   return (
@@ -76,7 +188,7 @@ function CollapseIcon({ direction }) {
 }
 
 export default function App() {
-  const [files, setFiles] = useState([]);
+  const [tree, setTree] = useState([]);
   const [selectedPath, setSelectedPath] = useState(null);
   const [draft, setDraft] = useState("");
   const [loadError, setLoadError] = useState(null);
@@ -91,7 +203,7 @@ export default function App() {
         return r.json();
       })
       .then((data) => {
-        setFiles(data.files ?? []);
+        setTree(data.tree ?? []);
         setLoadError(null);
       })
       .catch((e) => setLoadError(String(e)));
@@ -168,24 +280,14 @@ export default function App() {
         <div className="grid min-h-[calc(100vh-6rem)] grid-cols-1 gap-4 lg:grid-cols-[minmax(12rem,13rem)_minmax(0,1fr)]">
           <aside className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <h2 className="mb-2 text-base font-semibold text-slate-800">Files</h2>
-            <ul className="max-h-[70vh] list-none space-y-1 overflow-auto p-0">
-              {files.map((f) => (
-                <li key={f.path}>
-                  <button
-                    type="button"
-                    className={
-                      f.path === selectedPath
-                        ? "w-full break-all rounded-lg border border-sky-300 bg-sky-100 px-2 py-1.5 text-left text-sm text-slate-800 transition hover:bg-sky-50"
-                        : "w-full break-all rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-                    }
-                    onClick={() => setSelectedPath(f.path)}
-                  >
-                    {f.path}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {files.length === 0 && !loadError && (
+            <div className="max-h-[70vh] overflow-auto">
+              <FileTree
+                tree={tree}
+                selectedPath={selectedPath}
+                onSelect={setSelectedPath}
+              />
+            </div>
+            {tree.length === 0 && !loadError && (
               <p className="mt-2 text-sm text-slate-500">
                 No .md files found. Add some under{" "}
                 <code className="rounded bg-slate-100 px-1 py-0.5 text-slate-700">

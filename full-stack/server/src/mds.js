@@ -13,6 +13,112 @@ import { attachCommentRoutes } from "./comments.js";
  * @param {string} [dir]
  * @param {string} [base]
  * @param {Set<string>} [seenDirs]
+ * @returns {Promise<Array<{ type: 'dir', name: string, path: string, children: unknown[] } | { type: 'file', name: string, path: string, title: string }>>}
+ */
+export async function buildMdTree(root, dir = root, base = "", seenDirs = new Set()) {
+  const resolvedRoot = path.resolve(root);
+
+  let realDir;
+  try {
+    realDir = await fs.realpath(dir);
+  } catch (e) {
+    if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+      return [];
+    }
+    throw e;
+  }
+  if (seenDirs.has(realDir)) {
+    return [];
+  }
+  seenDirs.add(realDir);
+
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch (e) {
+    if (/** @type {NodeJS.ErrnoException} */ (e).code === "ENOENT") {
+      return [];
+    }
+    throw e;
+  }
+
+  /** @type {Array<{ kind: 'dir', name: string, rel: string, full: string } | { kind: 'file', name: string, rel: string, full: string }>} */
+  const items = [];
+
+  for (const ent of entries) {
+    const rel = base ? `${base}/${ent.name}` : ent.name;
+    const full = path.join(dir, ent.name);
+    if (ent.isDirectory()) {
+      items.push({ kind: "dir", name: ent.name, rel, full });
+    } else if (ent.isSymbolicLink()) {
+      let targetStat;
+      try {
+        targetStat = await fs.stat(full);
+      } catch {
+        continue;
+      }
+      if (targetStat.isDirectory()) {
+        items.push({ kind: "dir", name: ent.name, rel, full });
+      } else if (targetStat.isFile() && ent.name.endsWith(".md")) {
+        items.push({ kind: "file", name: ent.name, rel, full });
+      }
+    } else if (ent.isFile() && ent.name.endsWith(".md")) {
+      items.push({ kind: "file", name: ent.name, rel, full });
+    }
+  }
+
+  items.sort((a, b) => {
+    if (a.kind !== b.kind) {
+      return a.kind === "dir" ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  /** @type {Array<{ type: 'dir', name: string, path: string, children: unknown[] } | { type: 'file', name: string, path: string, title: string }>} */
+  const nodes = [];
+
+  for (const item of items) {
+    if (item.kind === "dir") {
+      const children = await buildMdTree(resolvedRoot, item.full, item.rel, seenDirs);
+      if (children.length > 0) {
+        nodes.push({
+          type: "dir",
+          name: item.name,
+          path: item.rel.replace(/\\/g, "/"),
+          children,
+        });
+      }
+    } else {
+      const normalizedPath = item.rel.replace(/\\/g, "/");
+      let title = "";
+      try {
+        const content = await fs.readFile(item.full, "utf8");
+        title = titleFromFirstLine(content);
+      } catch {
+        title = path.basename(item.name, ".md");
+      }
+      nodes.push({
+        type: "file",
+        name: item.name,
+        path: normalizedPath,
+        title,
+      });
+    }
+  }
+
+  return nodes;
+}
+
+function titleFromFirstLine(content) {
+  const firstLine = content.split(/\r?\n/)[0] ?? "";
+  return firstLine.replace(/#/g, "").trim();
+}
+
+/**
+ * @param {string} root
+ * @param {string} [dir]
+ * @param {string} [base]
+ * @param {Set<string>} [seenDirs]
  * @returns {Promise<Array<{ path: string }>>}
  */
 export async function listMdFilePaths(root, dir = root, base = "", seenDirs = new Set()) {
@@ -94,34 +200,12 @@ export function createMdsRouter(mdsDir, commentStorage, accessStorage) {
     return full;
   }
 
-  function titleFromFirstLine(content) {
-    const firstLine = content.split(/\r?\n/)[0] ?? "";
-    return firstLine.replace(/#/g, "").trim();
-  }
-
-  async function listMdFilesWithTitles() {
-    const paths = await listMdFilePaths(root);
-    const files = [];
-    for (const { path: relPath } of paths) {
-      const full = path.resolve(root, relPath);
-      let title = "";
-      try {
-        const content = await fs.readFile(full, "utf8");
-        title = titleFromFirstLine(content);
-      } catch {
-        title = path.basename(relPath, ".md");
-      }
-      files.push({ path: relPath, title });
-    }
-    return files;
-  }
-
   const router = Router();
 
   router.get("/", async (_req, res) => {
     try {
-      const files = await listMdFilesWithTitles();
-      res.json({ files });
+      const tree = await buildMdTree(root);
+      res.json({ tree });
     } catch (e) {
       res.status(500).json({ error: String(/** @type {Error} */ (e).message) });
     }

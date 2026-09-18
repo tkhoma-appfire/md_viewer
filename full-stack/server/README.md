@@ -62,7 +62,7 @@ Comments and access lists stay under `comments/` and `access/` when running loca
 |--------|------|-------------|
 | `GET` | `/` | Hello World |
 | `GET` | `/api/health` | Service status and resolved `mdsDir` |
-| `GET` | `/api/mds/` | List `.md` files with `path` and `title` (first line, `#` stripped) |
+| `GET` | `/api/mds/` | Folder tree of `.md` files (`tree`: nested `dir` / `file` nodes; files include `title` from first line) |
 | `GET` | `/api/mds/file?path=…` | Read one file’s content |
 | `GET` | `/api/mds/comments?path=…` | List comments for a file |
 | `POST` | `/api/mds/comments` | Add a comment (`{ path, line, text }`; author from `X-User-Email`) |
@@ -77,12 +77,12 @@ Comments are stored as JSON (one object per markdown path). Locally that is a fi
 
 **Viewer access:** If a file has no access record, any client can list and read it. After `PUT /api/mds/access`, only emails in that list (matched case-insensitively) can list, read, comment on, or update access for the file. The user who creates the list is added automatically if missing. Access lists use the same storage backend as comments (`access/` locally, Vercel Blob on production when configured).
 
-If `GET /api/mds/` returns `{ "files": [] }` but markdown files exist:
+If `GET /api/mds/` returns `{ "tree": [] }` but markdown files exist:
 
 1. Check **`GET /api/health`** — `mdsExists` should be `true` and `mdFilesOnDisk` should be &gt; 0. If `mdsExists` is false, rebuild Docker (`make build`) so `mds/` is copied into the image.
 2. If `mdFilesOnDisk` &gt; 0 but the list is still empty, every file may be access-restricted. Call the list with your email: `-H "X-User-Email: you@example.com"` (the Android app sends this after sign-in).
 
-### List files
+### List files (tree)
 
 ```bash
 curl http://localhost:3000/api/mds/
@@ -92,13 +92,31 @@ Response:
 
 ```json
 {
-  "files": [
-    { "path": "notes/example.md", "title": "Example title" }
+  "tree": [
+    {
+      "type": "dir",
+      "name": "lingerie",
+      "path": "lingerie",
+      "children": [
+        {
+          "type": "file",
+          "name": "lingerie-retail-business-study-plan.md",
+          "path": "lingerie/lingerie-retail-business-study-plan.md",
+          "title": "Lingerie retail business study plan"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "name": "poizdka_miskolctapolca_4_dni.md",
+      "path": "poizdka_miskolctapolca_4_dni.md",
+      "title": "Trip notes"
+    }
   ]
 }
 ```
 
-`title` is the first line of the file with `#` characters removed.
+For `file` nodes, `title` is the first line of the file with `#` characters removed.
 
 ### Read a file
 

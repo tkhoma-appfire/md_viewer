@@ -82,7 +82,7 @@ The host directory **`./mds`** is bind-mounted into the server container as **`/
 
 API (also proxied under `/md_viewer/api/…` in the browser):
 
-- `GET /api/mds` — list `.md` files (relative paths).
+- `GET /api/mds` — folder tree of `.md` files (`tree`: nested `dir` / `file` nodes with `name`, `path`, and `children` for folders).
 - `GET /api/mds/file?path=…` — read one file.
 - `PUT /api/mds/file` — JSON `{ "path": "…", "content": "…" }` to save (creates parent directories if needed).
 

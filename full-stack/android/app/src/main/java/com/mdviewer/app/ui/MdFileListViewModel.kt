@@ -41,7 +41,7 @@ class MdFileListViewModel : ViewModel() {
     private suspend fun fetchFiles(keepContentOnError: Boolean) {
         try {
             val response = ApiClient.mdsApi.listFiles()
-            _uiState.value = MdFileListUiState.Success(response.files)
+            _uiState.value = MdFileListUiState.Success(response.tree)
         } catch (e: Exception) {
             if (!keepContentOnError) {
                 _uiState.value = MdFileListUiState.Error(

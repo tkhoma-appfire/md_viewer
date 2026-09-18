@@ -132,7 +132,7 @@ make run
 # or: npm start
 ```
 
-The app calls `GET /api/mds/` after sign-in and shows the returned file paths in a list.
+The app calls `GET /api/mds/` after sign-in and shows a **folder tree** of markdown files (expand/collapse folders, tap a file to open).
 
 The server URL is a build-time setting. The default is `https://md-viewer-pied.vercel.app/`.
 
