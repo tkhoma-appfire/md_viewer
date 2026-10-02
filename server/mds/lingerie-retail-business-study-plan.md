@@ -74,20 +74,6 @@ Unlike general fashion, lingerie retail lives or dies on **fit expertise**.
 
 ---
 
-### 3. Bra Fitting (Non-Negotiable for Physical Retail)
-
-Study:
-
-- Fit-by-sight vs tape measure methods
-- Signs of poor fit (gapping, spillage, riding band, slipping straps)
-- How to fit without having every size in stock
-- Specialty fittings: maternity, post-surgery, teens
-- Privacy, dignity, and inclusive fitting room practices
-
-**Certification recommended** if you plan a physical boutique (see [Specialized Training](#specialized-training-beyond-udemy)).
-
----
-
 ### 4. Business Planning & Legal
 
 - Business structures (sole proprietorship, LLC, etc. — varies by country)
@@ -163,16 +149,6 @@ Study:
 
 ## Books to Read
 
-Organized by priority. Start with **Tier 1**, then branch based on your model (boutique vs online-first).
-
-### Tier 1 — Start Here
-
-| Book | Author | Why read it |
-|------|--------|-------------|
-| **How to Be a Lingerie Designer** (also valuable for retailers) | Van Jonsson | Lingerie-specific roadmap: manufacturing, sizing, grading, pricing, marketing, finances. Closest thing to a lingerie startup bible. |
-| **The Fashion Entrepreneur** | Keanan Duffty | Legal structure, business plan, supply chain, scaling. Interviews with industry leaders (Tommy Hilfiger, etc.). |
-| **Profit First** | Mike Michalowicz | Cash flow management — essential when inventory eats capital. |
-
 ### Tier 2 — Fashion Business Depth
 
 | Book | Author | Why read it |
@@ -247,25 +223,6 @@ Search Udemy for these topics (titles vary; pick highest-rated, recent courses):
 | **Email marketing for e-commerce** | Klaviyo/Mailchimp flows, abandoned cart |
 | **Product photography** | Flat lay and on-model basics (or budget for a photographer) |
 | **Google Analytics for e-commerce** | Conversion tracking, funnel analysis |
-
----
-
-## Specialized Training (Beyond Udemy)
-
-Lingerie retail quality depends heavily on **fit training**. These are industry-specific programs worth the investment.
-
-| Provider | Program | Format | Notes |
-|----------|---------|--------|-------|
-| **Pudding Lingerie** (Helen Masters) | Mastering Bra Fitting (Beginner & Advanced) | In-person, online, self-guided | Retail-focused; includes mastectomy, maternity, teen fittings |
-| **Esteem Bra Fitting Academy** | Tier 1–3 with optional certification | Self-paced online | Competency exams; specialty fittings in advanced tiers |
-| **Bra Fitting Course** (Lindsey Brown) | One-day professional training | In-person (UK) | Fit-by-sight method; Master's research background |
-| **Lace of Love** | Professional Bra Fitting Certification | Remote (Zoom) | Personalized training with certification |
-| **Pudding Lingerie** | Business consultancy & manuals | Downloads / sessions | "Start from Scratch," buying, retail operations |
-
-**Also explore:**
-
-- Trade shows: **Curve New York**, **Salon International de la Lingerie (Paris)** — for supplier networking
-- **WWD**, **The Lingerie Journal**, **Lingerie Insight** — industry news (free online)
 
 ---
 
