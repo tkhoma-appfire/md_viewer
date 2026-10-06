@@ -28,6 +28,8 @@ export default function App() {
     saveState,
     refreshList,
     save,
+    uploadDroppedFiles,
+    uploadState,
   } = useMarkdownFiles({ onFileLoaded: resetScroll });
 
   return (
@@ -58,6 +60,8 @@ export default function App() {
             selectedPath={selectedPath}
             onSelect={setSelectedPath}
             loadError={loadError}
+            onUploadToFolder={uploadDroppedFiles}
+            uploadState={uploadState}
           />
 
           <div className="flex min-h-0 min-w-0 w-full flex-col gap-3 lg:min-h-0">

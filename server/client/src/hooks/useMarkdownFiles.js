@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/api.js";
+import { saveMarkdownFile } from "../lib/saveMarkdownFile.js";
+import { collectMarkdownFromDrop } from "../utils/dropMarkdownFiles.js";
 
 export function useMarkdownFiles({ onFileLoaded }) {
   const [tree, setTree] = useState([]);
@@ -7,9 +9,10 @@ export function useMarkdownFiles({ onFileLoaded }) {
   const [draft, setDraft] = useState("");
   const [loadError, setLoadError] = useState(null);
   const [saveState, setSaveState] = useState(null);
+  const [uploadState, setUploadState] = useState(null);
 
   const refreshList = useCallback(() => {
-    fetch(`${API_BASE}/mds`)
+    return fetch(`${API_BASE}/mds`)
       .then((r) => {
         if (!r.ok) throw new Error(`list failed: ${r.status}`);
         return r.json();
@@ -17,8 +20,12 @@ export function useMarkdownFiles({ onFileLoaded }) {
       .then((data) => {
         setTree(data.tree ?? []);
         setLoadError(null);
+        return data;
       })
-      .catch((e) => setLoadError(String(e)));
+      .catch((e) => {
+        setLoadError(String(e));
+        throw e;
+      });
   }, []);
 
   useEffect(() => {
@@ -51,22 +58,34 @@ export function useMarkdownFiles({ onFileLoaded }) {
   const save = useCallback(() => {
     if (!selectedPath) return;
     setSaveState("saving");
-    fetch(`${API_BASE}/mds/file`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: selectedPath, content: draft }),
-    })
-      .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(body.error || `save failed: ${r.status}`);
-        return body;
-      })
+    saveMarkdownFile(selectedPath, draft)
       .then(() => {
         setSaveState("saved");
         refreshList();
       })
       .catch((e) => setSaveState(String(e)));
   }, [selectedPath, draft, refreshList]);
+
+  const uploadDroppedFiles = useCallback(
+    async (dataTransfer, targetDir = "") => {
+      setUploadState("uploading");
+      try {
+        const files = await collectMarkdownFromDrop(dataTransfer, targetDir);
+        if (files.length === 0) {
+          throw new Error("Drop only .md files or folders containing them");
+        }
+        for (const { path, content } of files) {
+          await saveMarkdownFile(path, content);
+        }
+        await refreshList();
+        setSelectedPath(files[files.length - 1].path);
+        setUploadState(`uploaded:${files.length}`);
+      } catch (e) {
+        setUploadState(String(e));
+      }
+    },
+    [refreshList]
+  );
 
   return {
     tree,
@@ -78,5 +97,7 @@ export function useMarkdownFiles({ onFileLoaded }) {
     saveState,
     refreshList,
     save,
+    uploadDroppedFiles,
+    uploadState,
   };
 }
